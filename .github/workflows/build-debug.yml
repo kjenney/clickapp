@@ -7,6 +7,8 @@ on:
     paths-ignore:
       - '*.md'
       - '**/*.md'
+      - 'scripts'
+      - '.github'
 
 jobs:
   build:
