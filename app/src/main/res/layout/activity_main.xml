@@ -190,6 +190,13 @@
         </LinearLayout>
 
         <Button
+            android:id="@+id/btnPickCoordinates"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Pick Coordinates from Screen"
+            android:layout_marginBottom="8dp" />
+
+        <Button
             android:id="@+id/btnClickCoordinates"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

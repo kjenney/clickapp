@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -24,6 +25,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val handler = Handler(Looper.getMainLooper())
+    private val OVERLAY_PERMISSION_REQUEST_CODE = 1001
     private var installedApps: List<AppInfo> = emptyList()
     private var selectedPackageName: String = ""
 
@@ -59,6 +61,25 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private val coordinatesReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == CoordinatePickerService.ACTION_COORDINATES_PICKED) {
+                val x = intent.getIntExtra(CoordinatePickerService.EXTRA_X, 0)
+                val y = intent.getIntExtra(CoordinatePickerService.EXTRA_Y, 0)
+
+                handler.post {
+                    binding.etClickX.setText(x.toString())
+                    binding.etClickY.setText(y.toString())
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Coordinates picked: ($x, $y)",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -89,6 +110,11 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         unregisterReceiver(elementsReceiver)
+        try {
+            unregisterReceiver(coordinatesReceiver)
+        } catch (e: IllegalArgumentException) {
+            // Receiver not registered, ignore
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -107,11 +133,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun registerElementsReceiver() {
-        val filter = IntentFilter(ClickAccessibilityService.ACTION_ELEMENTS_UPDATED)
+        val elementsFilter = IntentFilter(ClickAccessibilityService.ACTION_ELEMENTS_UPDATED)
+        val coordinatesFilter = IntentFilter(CoordinatePickerService.ACTION_COORDINATES_PICKED)
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(elementsReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            registerReceiver(elementsReceiver, elementsFilter, Context.RECEIVER_NOT_EXPORTED)
+            registerReceiver(coordinatesReceiver, coordinatesFilter, Context.RECEIVER_NOT_EXPORTED)
         } else {
-            registerReceiver(elementsReceiver, filter)
+            registerReceiver(elementsReceiver, elementsFilter)
+            registerReceiver(coordinatesReceiver, coordinatesFilter)
         }
     }
 
@@ -223,6 +253,11 @@ class MainActivity : AppCompatActivity() {
             performOpenAndClick()
         }
 
+        // Pick coordinates button
+        binding.btnPickCoordinates.setOnClickListener {
+            startCoordinatePicker()
+        }
+
         // Click at coordinates button
         binding.btnClickCoordinates.setOnClickListener {
             performClickAtCoordinates()
@@ -287,6 +322,52 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    private fun startCoordinatePicker() {
+        if (!Settings.canDrawOverlays(this)) {
+            AlertDialog.Builder(this)
+                .setTitle("Permission Required")
+                .setMessage("To pick coordinates from screen, this app needs permission to draw over other apps.\n\nYou will be taken to settings to enable this permission.")
+                .setPositiveButton("Open Settings") { _, _ ->
+                    val intent = Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:$packageName")
+                    )
+                    @Suppress("DEPRECATION")
+                    startActivityForResult(intent, OVERLAY_PERMISSION_REQUEST_CODE)
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        } else {
+            launchCoordinatePicker()
+        }
+    }
+
+    private fun launchCoordinatePicker() {
+        Toast.makeText(this, "Tap anywhere on screen to pick coordinates", Toast.LENGTH_LONG).show()
+
+        handler.postDelayed({
+            val intent = Intent(this, CoordinatePickerService::class.java)
+            startService(intent)
+        }, 500)
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if (requestCode == OVERLAY_PERMISSION_REQUEST_CODE) {
+            if (Settings.canDrawOverlays(this)) {
+                launchCoordinatePicker()
+            } else {
+                Toast.makeText(
+                    this,
+                    "Overlay permission is required to pick coordinates",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
     }
 
     private fun configureDoubleClick() {
