@@ -85,6 +85,11 @@ class ClickAccessibilityService : AccessibilityService() {
      * Broadcasts the current clickable elements with debouncing
      */
     private fun broadcastClickableElements(packageName: String) {
+        // Skip if this is our own app
+        if (packageName == this@ClickAccessibilityService.packageName) {
+            return
+        }
+
         val currentTime = System.currentTimeMillis()
         if (currentTime - lastBroadcastTime < broadcastDebounceMs) {
             return // Debounce
