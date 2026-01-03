@@ -219,6 +219,15 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun configureDoubleClick() {
+        val isDoubleClick = binding.cbDoubleClick.isChecked
+        val delayStr = binding.etClickDelay.text.toString().trim()
+        val delaySeconds = delayStr.toFloatOrNull() ?: 2f
+
+        ClickAccessibilityService.doubleClickEnabled = isDoubleClick
+        ClickAccessibilityService.doubleClickDelayMs = (delaySeconds * 1000).toLong()
+    }
+
     private fun performOpenAndClick() {
         if (!ClickAccessibilityService.isServiceRunning) {
             Toast.makeText(this, "Please enable the accessibility service first", Toast.LENGTH_LONG).show()
@@ -237,6 +246,9 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        // Configure double-click settings
+        configureDoubleClick()
+
         // Configure the accessibility service
         ClickAccessibilityService.targetPackage = selectedPackageName
         ClickAccessibilityService.targetText = targetText
@@ -248,7 +260,12 @@ class MainActivity : AppCompatActivity() {
         if (service != null) {
             val opened = service.openApp(selectedPackageName)
             if (opened) {
-                Toast.makeText(this, "Opening app and will click on '$targetText'", Toast.LENGTH_SHORT).show()
+                val clickMsg = if (ClickAccessibilityService.doubleClickEnabled) {
+                    "Opening app and will click twice on '$targetText'"
+                } else {
+                    "Opening app and will click on '$targetText'"
+                }
+                Toast.makeText(this, clickMsg, Toast.LENGTH_SHORT).show()
             } else {
                 Toast.makeText(this, "Could not open app.", Toast.LENGTH_LONG).show()
                 ClickAccessibilityService.pendingAction = false
@@ -278,6 +295,9 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        // Configure double-click settings
+        configureDoubleClick()
+
         // Configure the accessibility service
         ClickAccessibilityService.targetPackage = selectedPackageName
         ClickAccessibilityService.clickX = x
@@ -290,7 +310,12 @@ class MainActivity : AppCompatActivity() {
         if (service != null) {
             val opened = service.openApp(selectedPackageName)
             if (opened) {
-                Toast.makeText(this, "Opening app and will click at ($x, $y)", Toast.LENGTH_SHORT).show()
+                val clickMsg = if (ClickAccessibilityService.doubleClickEnabled) {
+                    "Opening app and will click twice at ($x, $y)"
+                } else {
+                    "Opening app and will click at ($x, $y)"
+                }
+                Toast.makeText(this, clickMsg, Toast.LENGTH_SHORT).show()
             } else {
                 Toast.makeText(this, "Could not open app.", Toast.LENGTH_LONG).show()
                 ClickAccessibilityService.pendingAction = false

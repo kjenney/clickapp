@@ -34,6 +34,10 @@ class ClickAccessibilityService : AccessibilityService() {
         var useCoordinates: Boolean = false
         var pendingAction: Boolean = false
 
+        // Double click configuration
+        var doubleClickEnabled: Boolean = false
+        var doubleClickDelayMs: Long = 2000
+
         // Live monitoring
         var liveMonitoringEnabled: Boolean = false
     }
@@ -71,13 +75,30 @@ class ClickAccessibilityService : AccessibilityService() {
 
             // Delay to allow app UI to fully load
             handler.postDelayed({
-                if (useCoordinates && clickX >= 0 && clickY >= 0) {
-                    performClickAtCoordinates(clickX.toFloat(), clickY.toFloat())
-                } else if (targetText.isNotEmpty()) {
-                    performClickOnText(targetText)
+                performConfiguredClick()
+
+                // Schedule second click if double-click is enabled
+                if (doubleClickEnabled) {
+                    handler.postDelayed({
+                        Log.d(TAG, "Performing second click after ${doubleClickDelayMs}ms delay")
+                        performConfiguredClick()
+                        pendingAction = false
+                    }, doubleClickDelayMs)
+                } else {
+                    pendingAction = false
                 }
-                pendingAction = false
             }, 1500)
+        }
+    }
+
+    /**
+     * Performs the configured click action (either by coordinates or text)
+     */
+    private fun performConfiguredClick() {
+        if (useCoordinates && clickX >= 0 && clickY >= 0) {
+            performClickAtCoordinates(clickX.toFloat(), clickY.toFloat())
+        } else if (targetText.isNotEmpty()) {
+            performClickOnText(targetText)
         }
     }
 
@@ -85,8 +106,10 @@ class ClickAccessibilityService : AccessibilityService() {
      * Broadcasts the current clickable elements with debouncing
      */
     private fun broadcastClickableElements(packageName: String) {
+        val ownPackage = this@ClickAccessibilityService.packageName
+
         // Skip if this is our own app
-        if (packageName == this@ClickAccessibilityService.packageName) {
+        if (packageName == ownPackage) {
             return
         }
 
@@ -97,14 +120,21 @@ class ClickAccessibilityService : AccessibilityService() {
         lastBroadcastTime = currentTime
 
         handler.post {
+            // Double-check the root window isn't our app (might have changed since event)
+            val rootNode = rootInActiveWindow
+            val rootPackage = rootNode?.packageName?.toString()
+            if (rootPackage == null || rootPackage == ownPackage) {
+                return@post
+            }
+
             val elements = getClickableElementsDetailed()
             val intent = Intent(ACTION_ELEMENTS_UPDATED).apply {
-                setPackage(this@ClickAccessibilityService.packageName)
+                setPackage(ownPackage)
                 putParcelableArrayListExtra(EXTRA_ELEMENTS, ArrayList(elements))
-                putExtra(EXTRA_PACKAGE_NAME, packageName)
+                putExtra(EXTRA_PACKAGE_NAME, rootPackage)
             }
             sendBroadcast(intent)
-            Log.d(TAG, "Broadcast ${elements.size} elements from $packageName")
+            Log.d(TAG, "Broadcast ${elements.size} elements from $rootPackage")
         }
     }
 
