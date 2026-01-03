@@ -12,6 +12,7 @@ class ShortcutAdapter(
     private val context: Context,
     private var shortcuts: List<ClickShortcut>,
     private val onExecute: (ClickShortcut) -> Unit,
+    private val onEdit: (ClickShortcut) -> Unit,
     private val onDelete: (ClickShortcut) -> Unit
 ) : BaseAdapter() {
 
@@ -32,6 +33,7 @@ class ShortcutAdapter(
         val detailsText = view.findViewById<TextView>(R.id.shortcutDetails)
         val scheduleStatus = view.findViewById<TextView>(R.id.scheduleStatus)
         val executeButton = view.findViewById<Button>(R.id.executeButton)
+        val editButton = view.findViewById<Button>(R.id.editButton)
         val deleteButton = view.findViewById<Button>(R.id.deleteButton)
 
         nameText.text = shortcut.name
@@ -56,6 +58,10 @@ class ShortcutAdapter(
 
         executeButton.setOnClickListener {
             onExecute(shortcut)
+        }
+
+        editButton.setOnClickListener {
+            onEdit(shortcut)
         }
 
         deleteButton.setOnClickListener {

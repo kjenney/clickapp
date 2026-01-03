@@ -54,7 +54,15 @@
         android:layout_height="wrap_content"
         android:text="Execute"
         android:layout_marginStart="8dp"
-        android:layout_marginEnd="8dp"/>
+        android:layout_marginEnd="4dp"/>
+
+    <Button
+        android:id="@+id/editButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Edit"
+        android:layout_marginEnd="4dp"
+        android:backgroundTint="#FF9800"/>
 
     <Button
         android:id="@+id/deleteButton"
