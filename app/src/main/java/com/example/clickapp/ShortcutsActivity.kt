@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 class ShortcutsActivity : AppCompatActivity() {
 
     private lateinit var shortcutStorage: ShortcutStorage
+    private lateinit var schedulerManager: SchedulerManager
     private lateinit var shortcutAdapter: ShortcutAdapter
     private lateinit var shortcutsList: ListView
     private lateinit var emptyText: TextView
@@ -24,6 +25,7 @@ class ShortcutsActivity : AppCompatActivity() {
         supportActionBar?.title = "Click Shortcuts"
 
         shortcutStorage = ShortcutStorage(this)
+        schedulerManager = SchedulerManager(this)
         shortcutsList = findViewById(R.id.shortcutsList)
         emptyText = findViewById(R.id.emptyText)
 
@@ -117,6 +119,11 @@ class ShortcutsActivity : AppCompatActivity() {
     }
 
     private fun deleteShortcut(shortcut: ClickShortcut) {
+        // Cancel any scheduled execution for this shortcut
+        if (shortcut.schedulingEnabled) {
+            schedulerManager.cancelSchedule(shortcut.id)
+        }
+
         shortcutStorage.deleteShortcut(shortcut.id)
         loadShortcuts()
         Toast.makeText(

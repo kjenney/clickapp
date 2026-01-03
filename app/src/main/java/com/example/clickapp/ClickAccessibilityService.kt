@@ -40,6 +40,28 @@ class ClickAccessibilityService : AccessibilityService() {
 
         // Live monitoring
         var liveMonitoringEnabled: Boolean = false
+
+        /**
+         * Configure all click settings at once
+         */
+        fun configureClick(
+            packageName: String,
+            useCoordinates: Boolean,
+            targetText: String = "",
+            clickX: Int = -1,
+            clickY: Int = -1,
+            doubleClickEnabled: Boolean = false,
+            doubleClickDelayMs: Long = 2000
+        ) {
+            this.targetPackage = packageName
+            this.useCoordinates = useCoordinates
+            this.targetText = targetText
+            this.clickX = clickX
+            this.clickY = clickY
+            this.doubleClickEnabled = doubleClickEnabled
+            this.doubleClickDelayMs = doubleClickDelayMs
+            this.pendingAction = true
+        }
     }
 
     private val handler = Handler(Looper.getMainLooper())
