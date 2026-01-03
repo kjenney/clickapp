@@ -2,5 +2,4 @@
 <resources>
     <string name="app_name">ClickApp</string>
     <string name="accessibility_service_description">This service allows ClickApp to open other apps and perform click actions. It needs access to observe your actions and retrieve window content to find and interact with UI elements.</string>
-    <string name="instructions">Instructions:\n\n1. Enable the accessibility service by clicking the button above\n2. Enter the package name of the app you want to control (e.g., com.android.settings)\n3. Either enter text to click on OR coordinates\n4. Click the appropriate button to open the app and perform the click\n\nTip: Use \"Show Clickable Elements\" while the target app is open to see available click targets and their coordinates.</string>
 </resources>
