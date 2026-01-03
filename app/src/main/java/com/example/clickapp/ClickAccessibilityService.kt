@@ -16,6 +16,9 @@ class ClickAccessibilityService : AccessibilityService() {
 
     companion object {
         private const val TAG = "ClickAccessibilityService"
+        const val ACTION_ELEMENTS_UPDATED = "com.example.clickapp.ELEMENTS_UPDATED"
+        const val EXTRA_ELEMENTS = "elements"
+        const val EXTRA_PACKAGE_NAME = "package_name"
 
         var instance: ClickAccessibilityService? = null
             private set
@@ -30,9 +33,14 @@ class ClickAccessibilityService : AccessibilityService() {
         var clickY: Int = -1
         var useCoordinates: Boolean = false
         var pendingAction: Boolean = false
+
+        // Live monitoring
+        var liveMonitoringEnabled: Boolean = false
     }
 
     private val handler = Handler(Looper.getMainLooper())
+    private var lastBroadcastTime: Long = 0
+    private val broadcastDebounceMs: Long = 300 // Debounce to avoid flooding
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -42,12 +50,23 @@ class ClickAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event == null || !pendingAction) return
+        if (event == null) return
 
         val packageName = event.packageName?.toString() ?: return
 
-        // Check if we're in the target app
-        if (packageName == targetPackage) {
+        // Handle live monitoring
+        if (liveMonitoringEnabled) {
+            when (event.eventType) {
+                AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED,
+                AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED,
+                AccessibilityEvent.TYPE_VIEW_SCROLLED -> {
+                    broadcastClickableElements(packageName)
+                }
+            }
+        }
+
+        // Handle pending click action
+        if (pendingAction && packageName == targetPackage) {
             Log.d(TAG, "Target app detected: $packageName")
 
             // Delay to allow app UI to fully load
@@ -59,6 +78,74 @@ class ClickAccessibilityService : AccessibilityService() {
                 }
                 pendingAction = false
             }, 1500)
+        }
+    }
+
+    /**
+     * Broadcasts the current clickable elements with debouncing
+     */
+    private fun broadcastClickableElements(packageName: String) {
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastBroadcastTime < broadcastDebounceMs) {
+            return // Debounce
+        }
+        lastBroadcastTime = currentTime
+
+        handler.post {
+            val elements = getClickableElementsDetailed()
+            val intent = Intent(ACTION_ELEMENTS_UPDATED).apply {
+                setPackage(this@ClickAccessibilityService.packageName)
+                putParcelableArrayListExtra(EXTRA_ELEMENTS, ArrayList(elements))
+                putExtra(EXTRA_PACKAGE_NAME, packageName)
+            }
+            sendBroadcast(intent)
+            Log.d(TAG, "Broadcast ${elements.size} elements from $packageName")
+        }
+    }
+
+    /**
+     * Gets detailed clickable elements as ClickableElement objects
+     */
+    fun getClickableElementsDetailed(): List<ClickableElement> {
+        val elements = mutableListOf<ClickableElement>()
+        val rootNode = rootInActiveWindow ?: return elements
+
+        collectClickableNodesDetailed(rootNode, elements)
+        return elements
+    }
+
+    private fun collectClickableNodesDetailed(node: AccessibilityNodeInfo?, list: MutableList<ClickableElement>) {
+        if (node == null) return
+
+        if (node.isClickable) {
+            val text = node.text?.toString() ?: ""
+            val contentDesc = node.contentDescription?.toString() ?: ""
+            val className = node.className?.toString() ?: ""
+            val rect = Rect()
+            node.getBoundsInScreen(rect)
+
+            val displayText = when {
+                text.isNotEmpty() -> text
+                contentDesc.isNotEmpty() -> contentDesc
+                else -> className.substringAfterLast(".")
+            }
+
+            if (displayText.isNotEmpty() && rect.width() > 0 && rect.height() > 0) {
+                list.add(
+                    ClickableElement(
+                        text = displayText,
+                        contentDescription = contentDesc,
+                        className = className,
+                        x = rect.centerX(),
+                        y = rect.centerY(),
+                        bounds = "${rect.left},${rect.top},${rect.right},${rect.bottom}"
+                    )
+                )
+            }
+        }
+
+        for (i in 0 until node.childCount) {
+            collectClickableNodesDetailed(node.getChild(i), list)
         }
     }
 

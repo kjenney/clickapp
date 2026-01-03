@@ -172,6 +172,75 @@
             android:text="Show Clickable Elements"
             android:layout_marginBottom="16dp" />
 
+        <!-- Live Monitoring Section -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#CCCCCC"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Live Element Monitoring"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Enable Live Monitoring"
+                android:textSize="14sp" />
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switchLiveMonitoring"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvMonitoringStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Monitoring: OFF"
+            android:textSize="12sp"
+            android:textColor="#666666"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/tvCurrentApp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Current App: -"
+            android:textSize="12sp"
+            android:textColor="#666666"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Clickable Elements (tap to use):"
+            android:textSize="14sp"
+            android:layout_marginBottom="4dp" />
+
+        <ListView
+            android:id="@+id/listElements"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:background="#F5F5F5"
+            android:divider="#CCCCCC"
+            android:dividerHeight="1dp"
+            android:layout_marginBottom="16dp" />
+
         <!-- Instructions -->
         <TextView
             android:layout_width="match_parent"

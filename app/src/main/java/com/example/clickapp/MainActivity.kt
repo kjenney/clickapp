@@ -1,7 +1,11 @@
 package com.example.clickapp
 
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -19,12 +23,42 @@ class MainActivity : AppCompatActivity() {
     private var installedApps: List<AppInfo> = emptyList()
     private var selectedPackageName: String = ""
 
+    private lateinit var elementsAdapter: ClickableElementAdapter
+    private val elementsList = mutableListOf<ClickableElement>()
+
+    private val elementsReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == ClickAccessibilityService.ACTION_ELEMENTS_UPDATED) {
+                val elements = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    intent.getParcelableArrayListExtra(
+                        ClickAccessibilityService.EXTRA_ELEMENTS,
+                        ClickableElement::class.java
+                    )
+                } else {
+                    @Suppress("DEPRECATION")
+                    intent.getParcelableArrayListExtra(ClickAccessibilityService.EXTRA_ELEMENTS)
+                }
+
+                val packageName = intent.getStringExtra(ClickAccessibilityService.EXTRA_PACKAGE_NAME) ?: ""
+
+                handler.post {
+                    elements?.let {
+                        elementsAdapter.updateElements(it)
+                        binding.tvCurrentApp.text = "Current App: $packageName"
+                        binding.tvMonitoringStatus.text = "Monitoring: ${it.size} elements found"
+                    }
+                }
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         loadInstalledApps()
+        setupElementsList()
         setupUI()
         updateServiceStatus()
     }
@@ -32,6 +66,45 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         updateServiceStatus()
+        registerElementsReceiver()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        unregisterReceiver(elementsReceiver)
+    }
+
+    private fun registerElementsReceiver() {
+        val filter = IntentFilter(ClickAccessibilityService.ACTION_ELEMENTS_UPDATED)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(elementsReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(elementsReceiver, filter)
+        }
+    }
+
+    private fun setupElementsList() {
+        elementsAdapter = ClickableElementAdapter(this, elementsList) { element ->
+            onElementSelected(element)
+        }
+        binding.listElements.adapter = elementsAdapter
+    }
+
+    private fun onElementSelected(element: ClickableElement) {
+        AlertDialog.Builder(this)
+            .setTitle(element.text)
+            .setMessage("Type: ${element.className.substringAfterLast(".")}\nCoordinates: (${element.x}, ${element.y})\nBounds: ${element.bounds}")
+            .setPositiveButton("Use Text") { _, _ ->
+                binding.etTargetText.setText(element.text)
+                Toast.makeText(this, "Text set: ${element.text}", Toast.LENGTH_SHORT).show()
+            }
+            .setNeutralButton("Use Coordinates") { _, _ ->
+                binding.etClickX.setText(element.x.toString())
+                binding.etClickY.setText(element.y.toString())
+                Toast.makeText(this, "Coordinates set: (${element.x}, ${element.y})", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun loadInstalledApps() {
@@ -93,6 +166,28 @@ class MainActivity : AppCompatActivity() {
         // Show clickable elements button
         binding.btnShowElements.setOnClickListener {
             showClickableElements()
+        }
+
+        // Live monitoring toggle
+        binding.switchLiveMonitoring.setOnCheckedChangeListener { _, isChecked ->
+            if (!ClickAccessibilityService.isServiceRunning && isChecked) {
+                binding.switchLiveMonitoring.isChecked = false
+                Toast.makeText(this, "Please enable the accessibility service first", Toast.LENGTH_LONG).show()
+                return@setOnCheckedChangeListener
+            }
+
+            ClickAccessibilityService.liveMonitoringEnabled = isChecked
+            binding.tvMonitoringStatus.text = if (isChecked) {
+                "Monitoring: ON - Switch to another app to see elements"
+            } else {
+                "Monitoring: OFF"
+            }
+
+            if (!isChecked) {
+                elementsList.clear()
+                elementsAdapter.notifyDataSetChanged()
+                binding.tvCurrentApp.text = "Current App: -"
+            }
         }
     }
 
