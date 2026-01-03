@@ -34,4 +34,15 @@
         android:dividerHeight="1dp"
         android:divider="@android:color/darker_gray"/>
 
+    <!-- Version Footer -->
+    <TextView
+        android:id="@+id/tvVersion"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Version 1.0"
+        android:textSize="10sp"
+        android:textColor="#999999"
+        android:gravity="center"
+        android:layout_marginTop="16dp"/>
+
 </LinearLayout>
