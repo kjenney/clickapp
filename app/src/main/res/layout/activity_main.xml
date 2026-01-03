@@ -50,16 +50,16 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Target App Package Name:"
+            android:text="Select Target App:"
             android:textSize="14sp"
             android:layout_marginBottom="4dp" />
 
-        <EditText
-            android:id="@+id/etPackageName"
+        <Spinner
+            android:id="@+id/spinnerPackage"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="com.example.targetapp"
-            android:inputType="text"
+            android:minHeight="48dp"
+            android:background="@android:drawable/btn_dropdown"
             android:layout_marginBottom="16dp" />
 
         <!-- Click by Text Section -->

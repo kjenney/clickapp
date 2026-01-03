@@ -1,10 +1,12 @@
 package com.example.clickapp
 
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.widget.AdapterView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -14,12 +16,15 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val handler = Handler(Looper.getMainLooper())
+    private var installedApps: List<AppInfo> = emptyList()
+    private var selectedPackageName: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        loadInstalledApps()
         setupUI()
         updateServiceStatus()
     }
@@ -27,6 +32,46 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         updateServiceStatus()
+    }
+
+    private fun loadInstalledApps() {
+        val pm = packageManager
+        val intent = Intent(Intent.ACTION_MAIN).apply {
+            addCategory(Intent.CATEGORY_LAUNCHER)
+        }
+
+        val resolveInfoList = pm.queryIntentActivities(intent, PackageManager.MATCH_ALL)
+
+        installedApps = resolveInfoList
+            .map { resolveInfo ->
+                AppInfo(
+                    appName = resolveInfo.loadLabel(pm).toString(),
+                    packageName = resolveInfo.activityInfo.packageName,
+                    icon = resolveInfo.loadIcon(pm)
+                )
+            }
+            .filter { it.packageName != packageName } // Exclude this app
+            .sortedBy { it.appName.lowercase() }
+            .distinctBy { it.packageName }
+
+        // Set up spinner adapter
+        val adapter = AppSpinnerAdapter(this, installedApps)
+        binding.spinnerPackage.adapter = adapter
+
+        binding.spinnerPackage.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
+                selectedPackageName = installedApps[position].packageName
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+                selectedPackageName = ""
+            }
+        }
+
+        // Select first item by default
+        if (installedApps.isNotEmpty()) {
+            selectedPackageName = installedApps[0].packageName
+        }
     }
 
     private fun setupUI() {
@@ -85,11 +130,10 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val packageName = binding.etPackageName.text.toString().trim()
         val targetText = binding.etTargetText.text.toString().trim()
 
-        if (packageName.isEmpty()) {
-            Toast.makeText(this, "Please enter a package name", Toast.LENGTH_SHORT).show()
+        if (selectedPackageName.isEmpty()) {
+            Toast.makeText(this, "Please select an app", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -99,7 +143,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         // Configure the accessibility service
-        ClickAccessibilityService.targetPackage = packageName
+        ClickAccessibilityService.targetPackage = selectedPackageName
         ClickAccessibilityService.targetText = targetText
         ClickAccessibilityService.useCoordinates = false
         ClickAccessibilityService.pendingAction = true
@@ -107,11 +151,11 @@ class MainActivity : AppCompatActivity() {
         // Open the target app
         val service = ClickAccessibilityService.instance
         if (service != null) {
-            val opened = service.openApp(packageName)
+            val opened = service.openApp(selectedPackageName)
             if (opened) {
                 Toast.makeText(this, "Opening app and will click on '$targetText'", Toast.LENGTH_SHORT).show()
             } else {
-                Toast.makeText(this, "Could not open app. Check package name.", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Could not open app.", Toast.LENGTH_LONG).show()
                 ClickAccessibilityService.pendingAction = false
             }
         }
@@ -123,12 +167,11 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val packageName = binding.etPackageName.text.toString().trim()
         val xStr = binding.etClickX.text.toString().trim()
         val yStr = binding.etClickY.text.toString().trim()
 
-        if (packageName.isEmpty()) {
-            Toast.makeText(this, "Please enter a package name", Toast.LENGTH_SHORT).show()
+        if (selectedPackageName.isEmpty()) {
+            Toast.makeText(this, "Please select an app", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -141,7 +184,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         // Configure the accessibility service
-        ClickAccessibilityService.targetPackage = packageName
+        ClickAccessibilityService.targetPackage = selectedPackageName
         ClickAccessibilityService.clickX = x
         ClickAccessibilityService.clickY = y
         ClickAccessibilityService.useCoordinates = true
@@ -150,11 +193,11 @@ class MainActivity : AppCompatActivity() {
         // Open the target app
         val service = ClickAccessibilityService.instance
         if (service != null) {
-            val opened = service.openApp(packageName)
+            val opened = service.openApp(selectedPackageName)
             if (opened) {
                 Toast.makeText(this, "Opening app and will click at ($x, $y)", Toast.LENGTH_SHORT).show()
             } else {
-                Toast.makeText(this, "Could not open app. Check package name.", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Could not open app.", Toast.LENGTH_LONG).show()
                 ClickAccessibilityService.pendingAction = false
             }
         }
