@@ -1,4 +1,4 @@
-name: Release Debug APK
+name: Build and Release Debug APK
 
 on:
   push:
@@ -12,7 +12,7 @@ on:
       - '.gitignore'
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -32,20 +32,22 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug -PappVersionName=1.0.${{ github.run_number }}
 
-      - name: Generate release tag
-        id: tag
-        run: echo "tag=v1.0.${{ github.run_number }}" >> $GITHUB_OUTPUT
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.tag.outputs.tag }}
-          name: Debug Build ${{ steps.tag.outputs.tag }}
+          tag_name: v1.0.${{ github.run_number }}
+          name: Debug Build v1.0.${{ github.run_number }}
           body: |
             Debug APK build from commit ${{ github.sha }}
 
-            **Download:** [app-debug.apk](${{ github.server_url }}/${{ github.repository }}/releases/download/${{ steps.tag.outputs.tag }}/app-debug.apk)
+            **Download:** [app-debug.apk](${{ github.server_url }}/${{ github.repository }}/releases/download/v1.0.${{ github.run_number }}/app-debug.apk)
           files: app/build/outputs/apk/debug/app-debug.apk
           generate_release_notes: true
