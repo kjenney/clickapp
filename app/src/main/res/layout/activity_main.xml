@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Header -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/app_name"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Service Status -->
+        <TextView
+            android:id="@+id/tvServiceStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Service Status: DISABLED"
+            android:textSize="16sp"
+            android:gravity="center"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Enable Service Button -->
+        <Button
+            android:id="@+id/btnEnableService"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Enable Accessibility Service"
+            android:layout_marginBottom="24dp" />
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#CCCCCC"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Target App Section -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Target App Package Name:"
+            android:textSize="14sp"
+            android:layout_marginBottom="4dp" />
+
+        <EditText
+            android:id="@+id/etPackageName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="com.example.targetapp"
+            android:inputType="text"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Click by Text Section -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Option 1: Click on Text"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Text/Button Label to Click:"
+            android:textSize="14sp"
+            android:layout_marginBottom="4dp" />
+
+        <EditText
+            android:id="@+id/etTargetText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Button text or label"
+            android:inputType="text"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/btnOpenAndClick"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Open App and Click on Text"
+            android:layout_marginBottom="24dp" />
+
+        <!-- Click by Coordinates Section -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Option 2: Click at Coordinates"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginEnd="8dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="X Coordinate:"
+                    android:textSize="14sp" />
+
+                <EditText
+                    android:id="@+id/etClickX"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="500"
+                    android:inputType="number" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="8dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Y Coordinate:"
+                    android:textSize="14sp" />
+
+                <EditText
+                    android:id="@+id/etClickY"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="1000"
+                    android:inputType="number" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btnClickCoordinates"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Open App and Click at Coordinates"
+            android:layout_marginBottom="24dp" />
+
+        <!-- Utility Section -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#CCCCCC"
+            android:layout_marginBottom="16dp" />
+
+        <Button
+            android:id="@+id/btnShowElements"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Show Clickable Elements"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Instructions -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/instructions"
+            android:textSize="12sp"
+            android:textColor="#666666"
+            android:layout_marginTop="16dp" />
+
+    </LinearLayout>
+</ScrollView>
