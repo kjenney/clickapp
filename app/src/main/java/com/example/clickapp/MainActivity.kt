@@ -10,11 +10,15 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.view.Menu
+import android.view.MenuItem
 import android.widget.AdapterView
+import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.example.clickapp.databinding.ActivityMainBinding
+import java.util.UUID
 
 class MainActivity : AppCompatActivity() {
 
@@ -72,6 +76,21 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         unregisterReceiver(elementsReceiver)
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.main_menu, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.menu_shortcuts -> {
+                startActivity(Intent(this, ShortcutsActivity::class.java))
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
     }
 
     private fun registerElementsReceiver() {
@@ -166,6 +185,11 @@ class MainActivity : AppCompatActivity() {
         // Show clickable elements button
         binding.btnShowElements.setOnClickListener {
             showClickableElements()
+        }
+
+        // Save shortcut button
+        binding.btnSaveShortcut.setOnClickListener {
+            saveAsShortcut()
         }
 
         // Live monitoring toggle
@@ -344,5 +368,74 @@ class MainActivity : AppCompatActivity() {
                     .show()
             }
         }
+    }
+
+    private fun saveAsShortcut() {
+        if (selectedPackageName.isEmpty()) {
+            Toast.makeText(this, "Please select an app first", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val targetText = binding.etTargetText.text.toString().trim()
+        val xStr = binding.etClickX.text.toString().trim()
+        val yStr = binding.etClickY.text.toString().trim()
+        val x = xStr.toIntOrNull() ?: -1
+        val y = yStr.toIntOrNull() ?: -1
+
+        val useCoordinates: Boolean
+        if (targetText.isEmpty() && (x == -1 || y == -1)) {
+            Toast.makeText(this, "Please configure either text or coordinates", Toast.LENGTH_SHORT).show()
+            return
+        } else if (targetText.isNotEmpty()) {
+            useCoordinates = false
+        } else {
+            useCoordinates = true
+        }
+
+        val input = EditText(this)
+        input.hint = "Shortcut name"
+
+        val selectedApp = installedApps.find { it.packageName == selectedPackageName }
+        val defaultName = if (useCoordinates) {
+            "Click at ($x, $y) in ${selectedApp?.appName ?: selectedPackageName}"
+        } else {
+            "Click \"$targetText\" in ${selectedApp?.appName ?: selectedPackageName}"
+        }
+        input.setText(defaultName)
+
+        AlertDialog.Builder(this)
+            .setTitle("Save Shortcut")
+            .setMessage("Enter a name for this shortcut:")
+            .setView(input)
+            .setPositiveButton("Save") { _, _ ->
+                val name = input.text.toString().trim()
+                if (name.isEmpty()) {
+                    Toast.makeText(this, "Please enter a name", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+
+                val delayStr = binding.etClickDelay.text.toString().trim()
+                val delaySeconds = delayStr.toFloatOrNull() ?: 2f
+
+                val shortcut = ClickShortcut(
+                    id = UUID.randomUUID().toString(),
+                    name = name,
+                    appName = selectedApp?.appName ?: selectedPackageName,
+                    packageName = selectedPackageName,
+                    useCoordinates = useCoordinates,
+                    targetText = if (useCoordinates) "" else targetText,
+                    clickX = if (useCoordinates) x else -1,
+                    clickY = if (useCoordinates) y else -1,
+                    doubleClickEnabled = binding.cbDoubleClick.isChecked,
+                    doubleClickDelayMs = (delaySeconds * 1000).toLong()
+                )
+
+                val storage = ShortcutStorage(this)
+                storage.saveShortcut(shortcut)
+
+                Toast.makeText(this, "Shortcut saved: $name", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 }
