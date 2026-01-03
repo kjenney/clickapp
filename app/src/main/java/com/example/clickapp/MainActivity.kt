@@ -30,6 +30,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var elementsAdapter: ClickableElementAdapter
     private val elementsList = mutableListOf<ClickableElement>()
 
+    private lateinit var schedulerManager: SchedulerManager
+    private var selectedScheduleInterval = ScheduleInterval.NONE
+
     private val elementsReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == ClickAccessibilityService.ACTION_ELEMENTS_UPDATED) {
@@ -61,9 +64,13 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        schedulerManager = SchedulerManager(this)
+        schedulerManager.rescheduleAllShortcuts()
+
         loadInstalledApps()
         setupElementsList()
         setupUI()
+        setupScheduleIntervalSpinner()
         updateServiceStatus()
     }
 
@@ -164,6 +171,39 @@ class MainActivity : AppCompatActivity() {
         if (installedApps.isNotEmpty()) {
             selectedPackageName = installedApps[0].packageName
         }
+    }
+
+    private fun setupScheduleIntervalSpinner() {
+        val intervals = ScheduleInterval.values()
+        val intervalNames = intervals.map { it.displayName }
+        val adapter = android.widget.ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_item,
+            intervalNames
+        )
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.spinnerScheduleInterval.adapter = adapter
+
+        binding.spinnerScheduleInterval.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
+                selectedScheduleInterval = intervals[position]
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+                selectedScheduleInterval = ScheduleInterval.NONE
+            }
+        }
+
+        // Enable/disable spinner based on checkbox
+        binding.cbEnableScheduling.setOnCheckedChangeListener { _, isChecked ->
+            binding.spinnerScheduleInterval.isEnabled = isChecked
+            if (!isChecked) {
+                binding.spinnerScheduleInterval.setSelection(0) // Reset to NONE
+            }
+        }
+
+        // Initially disable the spinner
+        binding.spinnerScheduleInterval.isEnabled = false
     }
 
     private fun setupUI() {
@@ -417,6 +457,9 @@ class MainActivity : AppCompatActivity() {
                 val delayStr = binding.etClickDelay.text.toString().trim()
                 val delaySeconds = delayStr.toFloatOrNull() ?: 2f
 
+                val schedulingEnabled = binding.cbEnableScheduling.isChecked
+                val scheduleInterval = if (schedulingEnabled) selectedScheduleInterval else ScheduleInterval.NONE
+
                 val shortcut = ClickShortcut(
                     id = UUID.randomUUID().toString(),
                     name = name,
@@ -427,13 +470,21 @@ class MainActivity : AppCompatActivity() {
                     clickX = if (useCoordinates) x else -1,
                     clickY = if (useCoordinates) y else -1,
                     doubleClickEnabled = binding.cbDoubleClick.isChecked,
-                    doubleClickDelayMs = (delaySeconds * 1000).toLong()
+                    doubleClickDelayMs = (delaySeconds * 1000).toLong(),
+                    schedulingEnabled = schedulingEnabled,
+                    scheduleInterval = scheduleInterval
                 )
 
                 val storage = ShortcutStorage(this)
                 storage.saveShortcut(shortcut)
 
-                Toast.makeText(this, "Shortcut saved: $name", Toast.LENGTH_SHORT).show()
+                // Schedule the shortcut if scheduling is enabled
+                if (schedulingEnabled && scheduleInterval != ScheduleInterval.NONE) {
+                    schedulerManager.scheduleShortcut(shortcut)
+                    Toast.makeText(this, "Shortcut saved and scheduled: $name", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this, "Shortcut saved: $name", Toast.LENGTH_SHORT).show()
+                }
             }
             .setNegativeButton("Cancel", null)
             .show()

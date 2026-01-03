@@ -208,7 +208,38 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Show Clickable Elements"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Scheduling Section -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Scheduling Options"
+            android:textSize="16sp"
+            android:textStyle="bold"
             android:layout_marginBottom="8dp" />
+
+        <CheckBox
+            android:id="@+id/cbEnableScheduling"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Enable scheduled execution"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Schedule Interval:"
+            android:textSize="14sp"
+            android:layout_marginBottom="4dp" />
+
+        <Spinner
+            android:id="@+id/spinnerScheduleInterval"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:background="@android:drawable/btn_dropdown"
+            android:layout_marginBottom="16dp" />
 
         <Button
             android:id="@+id/btnSaveShortcut"

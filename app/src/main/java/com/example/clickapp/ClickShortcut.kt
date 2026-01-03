@@ -15,7 +15,9 @@ data class ClickShortcut(
     val clickX: Int = -1,
     val clickY: Int = -1,
     val doubleClickEnabled: Boolean = false,
-    val doubleClickDelayMs: Long = 2000
+    val doubleClickDelayMs: Long = 2000,
+    val schedulingEnabled: Boolean = false,
+    val scheduleInterval: ScheduleInterval = ScheduleInterval.NONE
 ) : Parcelable {
 
     fun toJson(): JSONObject {
@@ -30,6 +32,8 @@ data class ClickShortcut(
             put("clickY", clickY)
             put("doubleClickEnabled", doubleClickEnabled)
             put("doubleClickDelayMs", doubleClickDelayMs)
+            put("schedulingEnabled", schedulingEnabled)
+            put("scheduleInterval", scheduleInterval.name)
         }
     }
 
@@ -45,16 +49,26 @@ data class ClickShortcut(
                 clickX = json.optInt("clickX", -1),
                 clickY = json.optInt("clickY", -1),
                 doubleClickEnabled = json.optBoolean("doubleClickEnabled", false),
-                doubleClickDelayMs = json.optLong("doubleClickDelayMs", 2000)
+                doubleClickDelayMs = json.optLong("doubleClickDelayMs", 2000),
+                schedulingEnabled = json.optBoolean("schedulingEnabled", false),
+                scheduleInterval = ScheduleInterval.fromString(json.optString("scheduleInterval", "NONE"))
             )
         }
     }
 
     fun getDescription(): String {
-        return if (useCoordinates) {
+        val clickDescription = if (useCoordinates) {
             "Tap at ($clickX, $clickY) in $appName"
         } else {
             "Tap \"$targetText\" in $appName"
         }
+
+        val scheduleDescription = if (schedulingEnabled && scheduleInterval != ScheduleInterval.NONE) {
+            " • ${scheduleInterval.displayName}"
+        } else {
+            ""
+        }
+
+        return clickDescription + scheduleDescription
     }
 }
