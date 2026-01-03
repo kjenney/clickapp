@@ -31,6 +31,13 @@ class ShortcutsActivity : AppCompatActivity() {
 
         setupShortcutsList()
         loadShortcuts()
+        setupVersionFooter()
+    }
+
+    private fun setupVersionFooter() {
+        val versionName = packageManager.getPackageInfo(packageName, 0).versionName
+        val versionTextView = findViewById<TextView>(R.id.tvVersion)
+        versionTextView.text = "Version $versionName"
     }
 
     override fun onSupportNavigateUp(): Boolean {

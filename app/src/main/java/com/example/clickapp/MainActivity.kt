@@ -72,6 +72,12 @@ class MainActivity : AppCompatActivity() {
         setupUI()
         setupScheduleIntervalSpinner()
         updateServiceStatus()
+        setupVersionFooter()
+    }
+
+    private fun setupVersionFooter() {
+        val versionName = packageManager.getPackageInfo(packageName, 0).versionName
+        binding.tvVersion.text = "Version $versionName"
     }
 
     override fun onResume() {
