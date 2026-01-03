@@ -5,10 +5,11 @@ on:
     branches:
       - main
     paths-ignore:
-      - '*.md'
       - '**/*.md'
-      - 'scripts'
-      - '.github'
+      - 'scripts/**'
+      - '.github/**'
+      - 'LICENSE'
+      - '.gitignore'
 
 jobs:
   build:
