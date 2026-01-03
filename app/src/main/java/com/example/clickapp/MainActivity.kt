@@ -88,6 +88,7 @@ class MainActivity : AppCompatActivity() {
         schedulerManager = SchedulerManager(this)
         schedulerManager.rescheduleAllShortcuts()
 
+        registerCoordinatesReceiver()
         loadInstalledApps()
         setupElementsList()
         setupUI()
@@ -110,6 +111,10 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         unregisterReceiver(elementsReceiver)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
         try {
             unregisterReceiver(coordinatesReceiver)
         } catch (e: IllegalArgumentException) {
@@ -134,13 +139,20 @@ class MainActivity : AppCompatActivity() {
 
     private fun registerElementsReceiver() {
         val elementsFilter = IntentFilter(ClickAccessibilityService.ACTION_ELEMENTS_UPDATED)
-        val coordinatesFilter = IntentFilter(CoordinatePickerService.ACTION_COORDINATES_PICKED)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(elementsReceiver, elementsFilter, Context.RECEIVER_NOT_EXPORTED)
-            registerReceiver(coordinatesReceiver, coordinatesFilter, Context.RECEIVER_NOT_EXPORTED)
         } else {
             registerReceiver(elementsReceiver, elementsFilter)
+        }
+    }
+
+    private fun registerCoordinatesReceiver() {
+        val coordinatesFilter = IntentFilter(CoordinatePickerService.ACTION_COORDINATES_PICKED)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(coordinatesReceiver, coordinatesFilter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
             registerReceiver(coordinatesReceiver, coordinatesFilter)
         }
     }
