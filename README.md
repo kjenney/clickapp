@@ -8,3 +8,6 @@ Features:
 
 * Package/App dropdown for easier selection
 * Live monitoring of elements in apps for eassier selection
+* Allows saving events for future use
+* Scheduling feature for saved events
+* Allows picking coordinates directly by launching an app and clicking
