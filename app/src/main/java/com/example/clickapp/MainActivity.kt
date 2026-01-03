@@ -345,12 +345,28 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun launchCoordinatePicker() {
-        Toast.makeText(this, "Tap anywhere on screen to pick coordinates", Toast.LENGTH_LONG).show()
+        if (selectedPackageName.isEmpty()) {
+            Toast.makeText(this, "Please select an app first", Toast.LENGTH_SHORT).show()
+            return
+        }
 
-        handler.postDelayed({
-            val intent = Intent(this, CoordinatePickerService::class.java)
-            startService(intent)
-        }, 500)
+        val service = ClickAccessibilityService.instance
+        if (service != null) {
+            val opened = service.openApp(selectedPackageName)
+            if (opened) {
+                Toast.makeText(this, "Tap anywhere on screen to pick coordinates", Toast.LENGTH_LONG).show()
+
+                // Delay to let the target app open, then show overlay
+                handler.postDelayed({
+                    val intent = Intent(this, CoordinatePickerService::class.java)
+                    startService(intent)
+                }, 1500)
+            } else {
+                Toast.makeText(this, "Could not open app", Toast.LENGTH_LONG).show()
+            }
+        } else {
+            Toast.makeText(this, "Please enable the accessibility service first", Toast.LENGTH_LONG).show()
+        }
     }
 
     @Deprecated("Deprecated in Java")
