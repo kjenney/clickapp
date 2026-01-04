@@ -17,7 +17,10 @@ data class ClickShortcut(
     val doubleClickEnabled: Boolean = false,
     val doubleClickDelayMs: Long = 2000,
     val schedulingEnabled: Boolean = false,
-    val scheduleInterval: ScheduleInterval = ScheduleInterval.NONE
+    val scheduleInterval: ScheduleInterval = ScheduleInterval.NONE,
+    val groupId: String? = null,
+    val orderInGroup: Int = 0,
+    val delayAfterMs: Long = 0
 ) : Parcelable {
 
     fun toJson(): JSONObject {
@@ -34,6 +37,9 @@ data class ClickShortcut(
             put("doubleClickDelayMs", doubleClickDelayMs)
             put("schedulingEnabled", schedulingEnabled)
             put("scheduleInterval", scheduleInterval.name)
+            put("groupId", groupId ?: JSONObject.NULL)
+            put("orderInGroup", orderInGroup)
+            put("delayAfterMs", delayAfterMs)
         }
     }
 
@@ -51,7 +57,10 @@ data class ClickShortcut(
                 doubleClickEnabled = json.optBoolean("doubleClickEnabled", false),
                 doubleClickDelayMs = json.optLong("doubleClickDelayMs", 2000),
                 schedulingEnabled = json.optBoolean("schedulingEnabled", false),
-                scheduleInterval = ScheduleInterval.fromString(json.optString("scheduleInterval", "NONE"))
+                scheduleInterval = ScheduleInterval.fromString(json.optString("scheduleInterval", "NONE")),
+                groupId = json.optString("groupId", null).takeIf { it != "null" && it.isNotEmpty() },
+                orderInGroup = json.optInt("orderInGroup", 0),
+                delayAfterMs = json.optLong("delayAfterMs", 0)
             )
         }
     }

@@ -96,6 +96,93 @@ class SchedulerManager(private val context: Context) {
         return "shortcut_$shortcutId"
     }
 
+    private fun getGroupWorkTag(groupId: String): String {
+        return "group_$groupId"
+    }
+
+    // ==================== Event Group Scheduling ====================
+
+    /**
+     * Schedule a periodic execution for the given event group
+     */
+    fun scheduleGroup(group: EventGroup) {
+        if (!group.schedulingEnabled || group.scheduleInterval == ScheduleInterval.NONE) {
+            Log.d(TAG, "Scheduling not enabled for group: ${group.name}")
+            return
+        }
+
+        cancelGroupSchedule(group.id)
+
+        val intervalMinutes = group.scheduleInterval.intervalMinutes
+        if (intervalMinutes <= 0) {
+            Log.w(TAG, "Invalid interval for group: ${group.name}")
+            return
+        }
+
+        val workTag = getGroupWorkTag(group.id)
+        val inputData = workDataOf(
+            GroupExecutionWorker.KEY_GROUP_ID to group.id
+        )
+
+        val workRequest = PeriodicWorkRequestBuilder<GroupExecutionWorker>(
+            intervalMinutes,
+            TimeUnit.MINUTES
+        )
+            .setInputData(inputData)
+            .addTag(workTag)
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.NOT_REQUIRED)
+                    .setRequiresBatteryNotLow(false)
+                    .build()
+            )
+            .build()
+
+        workManager.enqueueUniquePeriodicWork(
+            workTag,
+            ExistingPeriodicWorkPolicy.REPLACE,
+            workRequest
+        )
+
+        Log.d(TAG, "Scheduled group '${group.name}' with interval: ${group.scheduleInterval.displayName}")
+    }
+
+    /**
+     * Cancel the scheduled execution for the given group ID
+     */
+    fun cancelGroupSchedule(groupId: String) {
+        val workTag = getGroupWorkTag(groupId)
+        workManager.cancelAllWorkByTag(workTag)
+        Log.d(TAG, "Cancelled schedule for group: $groupId")
+    }
+
+    /**
+     * Reschedule all groups that have scheduling enabled
+     */
+    fun rescheduleAllGroups() {
+        val storage = ShortcutStorage(context)
+        val groups = storage.getAllGroups()
+
+        var scheduledCount = 0
+        groups.forEach { group ->
+            if (group.schedulingEnabled && group.scheduleInterval != ScheduleInterval.NONE) {
+                scheduleGroup(group)
+                scheduledCount++
+            }
+        }
+
+        Log.d(TAG, "Rescheduled $scheduledCount groups")
+    }
+
+    /**
+     * Check if a group is currently scheduled
+     */
+    fun isGroupScheduled(groupId: String): Boolean {
+        val workTag = getGroupWorkTag(groupId)
+        val workInfos = workManager.getWorkInfosByTag(workTag).get()
+        return workInfos.any { !it.state.isFinished }
+    }
+
     companion object {
         private const val TAG = "SchedulerManager"
     }

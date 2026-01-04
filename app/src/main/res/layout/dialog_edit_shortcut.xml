@@ -12,7 +12,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Shortcut Name"
+            android:text="Event Name"
             android:textStyle="bold"
             android:textSize="14sp"
             android:layout_marginBottom="8dp"/>
@@ -21,7 +21,7 @@
             android:id="@+id/etShortcutName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Enter shortcut name"
+            android:hint="Enter event name"
             android:inputType="text"
             android:layout_marginBottom="16dp"/>
 

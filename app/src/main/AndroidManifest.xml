@@ -31,6 +31,16 @@
             android:exported="false"
             android:parentActivityName=".MainActivity" />
 
+        <activity
+            android:name=".EventGroupsActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity" />
+
+        <activity
+            android:name=".GroupDetailActivity"
+            android:exported="false"
+            android:parentActivityName=".EventGroupsActivity" />
+
         <!-- Accessibility Service Declaration -->
         <service
             android:name=".ClickAccessibilityService"

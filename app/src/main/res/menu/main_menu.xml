@@ -4,8 +4,14 @@
 
     <item
         android:id="@+id/menu_shortcuts"
-        android:title="Saved Shortcuts"
+        android:title="Saved Events"
         android:icon="@android:drawable/ic_menu_save"
         app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/menu_groups"
+        android:title="Event Groups"
+        android:icon="@android:drawable/ic_menu_agenda"
+        app:showAsAction="never" />
 
 </menu>

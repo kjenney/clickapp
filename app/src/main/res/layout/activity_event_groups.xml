@@ -5,36 +5,42 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="16dp"
-    tools:context=".ShortcutsActivity">
+    tools:context=".EventGroupsActivity">
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Saved Events"
+        android:text="Event Groups"
         android:textSize="24sp"
         android:textStyle="bold"
         android:gravity="center"
+        android:layout_marginBottom="8dp"/>
+
+    <Button
+        android:id="@+id/btnCreateGroup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Create New Group"
         android:layout_marginBottom="16dp"/>
 
     <TextView
         android:id="@+id/emptyText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="No events saved yet.\n\nGo back to the main screen and configure a click action, then tap 'Save as Event' to create one."
+        android:text="No event groups created yet.\n\nTap 'Create New Group' to create a group, then add events to it."
         android:textSize="14sp"
         android:gravity="center"
         android:padding="32dp"
         android:visibility="gone"/>
 
     <ListView
-        android:id="@+id/shortcutsList"
+        android:id="@+id/groupsList"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:dividerHeight="1dp"
         android:divider="@android:color/darker_gray"/>
 
-    <!-- Version Footer -->
     <TextView
         android:id="@+id/tvVersion"
         android:layout_width="match_parent"

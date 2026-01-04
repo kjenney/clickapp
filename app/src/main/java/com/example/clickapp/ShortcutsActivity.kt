@@ -21,7 +21,7 @@ class ShortcutsActivity : AppCompatActivity() {
         setContentView(R.layout.activity_shortcuts)
 
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        supportActionBar?.title = "Click Shortcuts"
+        supportActionBar?.title = "Saved Events"
 
         shortcutStorage = ShortcutStorage(this)
         schedulerManager = SchedulerManager(this)
