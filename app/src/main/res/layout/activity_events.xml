@@ -98,10 +98,11 @@
                 <ListView
                     android:id="@+id/shortcutsList"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="300dp"
                     android:dividerHeight="1dp"
                     android:divider="@android:color/darker_gray"
-                    android:nestedScrollingEnabled="true"/>
+                    android:scrollbars="vertical"
+                    android:fadeScrollbars="false"/>
 
             </LinearLayout>
 

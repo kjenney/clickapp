@@ -99,9 +99,8 @@ class EventsActivity : AppCompatActivity() {
         groupAdapter.updateGroups(groups)
         shortcutAdapter.updateShortcuts(standaloneEvents)
 
-        // Update ListView heights for nested scrolling
+        // Update ListView height for nested scrolling (groups only, events has fixed height)
         setListViewHeightBasedOnChildren(groupsList)
-        setListViewHeightBasedOnChildren(shortcutsList)
 
         // Show/hide sections based on data
         val hasGroups = groups.isNotEmpty()
