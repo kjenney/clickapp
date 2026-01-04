@@ -1,16 +1,24 @@
 #!/bin/bash
 
 VERSION="$1"
+PACKAGE_NAME="com.example.clickapp"
 
+# If no version specified, fetch the latest release from GitHub
 if [ -z "$VERSION" ]; then
-    echo "Error: Version argument required"
-    echo "Usage: ./install_apk.sh <version>"
-    exit 1
+    echo -e "No version specified. Fetching latest release..."
+    VERSION=$(curl -s "https://api.github.com/repos/kjenney/clickapp/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+
+    if [ -z "$VERSION" ]; then
+        echo -e "\tError: Could not fetch latest release version"
+        echo -e "\tUsage: ./install_apk.sh [version]"
+        exit 1
+    fi
+
+    echo -e "\tLatest version: $VERSION"
 fi
 
 # Function to check for active ADB connection
 check_adb_connection() {
-    # Get list of connected devices (excluding header line)
     local devices=$(adb devices 2>/dev/null | grep -v "List of devices" | grep -v "^$" | grep "device$")
 
     if [ -z "$devices" ]; then
@@ -20,31 +28,36 @@ check_adb_connection() {
     fi
 }
 
+# Function to check if app is installed
+is_app_installed() {
+    adb shell pm list packages 2>/dev/null | grep -q "$PACKAGE_NAME"
+}
+
 # Function to pair and connect to device
 pair_device() {
     echo ""
-    echo "No ADB device connected."
-    echo "To connect wirelessly, enable 'Wireless debugging' on your Android device"
-    echo "and use 'Pair device with pairing code' option."
+    echo -e "\tNo ADB device connected."
+    echo -e "\tTo connect wirelessly, enable 'Wireless debugging' on your Android device"
+    echo -e "\tand use 'Pair device with pairing code' option."
     echo ""
 
-    read -p "Enter pairing host:port (e.g., 192.168.1.100:37123): " PAIR_HOST
+    read -p $'\tEnter pairing host:port (e.g., 192.168.1.100:37123): ' PAIR_HOST
 
     if [ -z "$PAIR_HOST" ]; then
-        echo "Error: Pairing host required"
+        echo -e "\tError: Pairing host required"
         exit 1
     fi
 
-    read -p "Enter pairing code: " PAIR_CODE
+    read -p $'\tEnter pairing code: ' PAIR_CODE
 
     if [ -z "$PAIR_CODE" ]; then
-        echo "Error: Pairing code required"
+        echo -e "\tError: Pairing code required"
         exit 1
     fi
 
-    echo "Pairing with device..."
+    echo -e "\tPairing with device..."
     if ! adb pair "$PAIR_HOST" "$PAIR_CODE"; then
-        echo "Error: Pairing failed"
+        echo -e "\tError: Pairing failed"
         exit 1
     fi
 
@@ -52,63 +65,68 @@ pair_device() {
     DEVICE_IP=$(echo "$PAIR_HOST" | cut -d':' -f1)
 
     echo ""
-    read -p "Enter connection port (shown in 'Wireless debugging' settings, e.g., 5555 or 38745): " CONNECT_PORT
+    read -p $'\tEnter connection port (shown in Wireless debugging settings, e.g., 5555 or 38745): ' CONNECT_PORT
 
     if [ -z "$CONNECT_PORT" ]; then
-        echo "Error: Connection port required"
+        echo -e "\tError: Connection port required"
         exit 1
     fi
 
-    echo "Connecting to device..."
+    echo -e "\tConnecting to device..."
     if ! adb connect "$DEVICE_IP:$CONNECT_PORT"; then
-        echo "Error: Connection failed"
+        echo -e "\tError: Connection failed"
         exit 1
     fi
 
-    echo "Successfully connected to device!"
+    echo -e "\tSuccessfully connected to device!"
 }
 
 # Check for ADB connection
-echo "Checking for ADB connection..."
+echo -e "Checking for ADB connection..."
 if ! check_adb_connection; then
     pair_device
 
     # Verify connection after pairing
     if ! check_adb_connection; then
-        echo "Error: Still no device connected after pairing"
+        echo -e "\tError: Still no device connected after pairing"
         exit 1
     fi
 else
-    echo "ADB device connected."
+    echo -e "\tADB device connected."
 fi
 
 DOWNLOAD_URL="https://github.com/kjenney/clickapp/releases/download/$VERSION/app-debug.apk"
 
-echo "Checking if release exists: $VERSION"
+echo -e "Checking if release exists: $VERSION"
 
 # Check if the URL is valid before proceeding
 if ! curl -s --head --fail "$DOWNLOAD_URL" > /dev/null 2>&1; then
-    echo "Error: Release not found at $DOWNLOAD_URL"
-    echo "Please check the version number and try again."
+    echo -e "\tError: Release not found at $DOWNLOAD_URL"
+    echo -e "\tPlease check the version number and try again."
     exit 1
 fi
 
-echo "Release found. Downloading..."
+echo -e "\tRelease found. Downloading..."
 wget -q "$DOWNLOAD_URL"
 
 if [ ! -f "app-debug.apk" ]; then
-    echo "Error: Download failed"
+    echo -e "\tError: Download failed"
     exit 1
 fi
 
-echo "Uninstalling old version..."
-adb uninstall com.example.clickapp 2>/dev/null || true
+echo "Check if app is installed before uninstalling"
+if is_app_installed; then
+    echo -e "\tApp is installed. Uninstalling old version..."
+    adb uninstall "$PACKAGE_NAME" > /dev/null 2>&1 || true
+else
+    echo -e "\tNo existing installation found."
+fi
 
-echo "Installing new version..."
+echo -e "Installing new version..."
 mv app-debug.apk clickapp.apk
-adb install -r clickapp.apk
+adb install -r clickapp.apk > /dev/null 2>&1
 
-echo "Cleaning up..."
+echo -e "Cleaning up..."
 rm -rf *.apk
 
-echo "Done! Version $VERSION installed successfully."
+echo -e "\nDone! Version $VERSION installed successfully."
