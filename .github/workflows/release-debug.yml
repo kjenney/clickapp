@@ -10,6 +10,7 @@ on:
       - '.github/**'
       - 'LICENSE'
       - '.gitignore'
+      - 'Makefile'
 
 jobs:
   build:
