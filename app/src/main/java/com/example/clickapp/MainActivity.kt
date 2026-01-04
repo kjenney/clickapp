@@ -131,11 +131,7 @@ class MainActivity : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.menu_shortcuts -> {
-                startActivity(Intent(this, ShortcutsActivity::class.java))
-                true
-            }
-            R.id.menu_groups -> {
-                startActivity(Intent(this, EventGroupsActivity::class.java))
+                startActivity(Intent(this, EventsActivity::class.java))
                 true
             }
             else -> super.onOptionsItemSelected(item)

@@ -2,35 +2,54 @@ package com.example.clickapp
 
 import android.content.Intent
 import android.os.Bundle
-import android.text.InputType
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import java.util.UUID
 
-class ShortcutsActivity : AppCompatActivity() {
+class EventsActivity : AppCompatActivity() {
 
     private lateinit var shortcutStorage: ShortcutStorage
     private lateinit var schedulerManager: SchedulerManager
     private lateinit var shortcutAdapter: ShortcutAdapter
+    private lateinit var groupAdapter: EventGroupAdapter
     private lateinit var shortcutsList: ListView
+    private lateinit var groupsList: ListView
     private lateinit var emptyText: TextView
+    private lateinit var groupsSection: LinearLayout
+    private lateinit var eventsSection: LinearLayout
+    private lateinit var sectionDivider: View
+    private val handler = Handler(Looper.getMainLooper())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_shortcuts)
+        setContentView(R.layout.activity_events)
 
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.title = "Saved Events"
 
         shortcutStorage = ShortcutStorage(this)
         schedulerManager = SchedulerManager(this)
-        shortcutsList = findViewById(R.id.shortcutsList)
-        emptyText = findViewById(R.id.emptyText)
 
+        shortcutsList = findViewById(R.id.shortcutsList)
+        groupsList = findViewById(R.id.groupsList)
+        emptyText = findViewById(R.id.emptyText)
+        groupsSection = findViewById(R.id.groupsSection)
+        eventsSection = findViewById(R.id.eventsSection)
+        sectionDivider = findViewById(R.id.sectionDivider)
+
+        setupGroupsList()
         setupShortcutsList()
-        loadShortcuts()
+        setupCreateGroupButton()
         setupVersionFooter()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        loadData()
     }
 
     private fun setupVersionFooter() {
@@ -44,35 +63,167 @@ class ShortcutsActivity : AppCompatActivity() {
         return true
     }
 
+    private fun setupGroupsList() {
+        groupAdapter = EventGroupAdapter(
+            context = this,
+            groups = emptyList(),
+            storage = shortcutStorage,
+            onExecute = { group -> executeGroup(group) },
+            onDelete = { group -> confirmDeleteGroup(group) },
+            onClick = { group -> openGroupDetail(group) }
+        )
+        groupsList.adapter = groupAdapter
+    }
+
     private fun setupShortcutsList() {
         shortcutAdapter = ShortcutAdapter(
             context = this,
             shortcuts = emptyList(),
-            onExecute = { shortcut ->
-                executeShortcut(shortcut)
-            },
-            onEdit = { shortcut ->
-                editShortcut(shortcut)
-            },
-            onDelete = { shortcut ->
-                confirmDeleteShortcut(shortcut)
-            }
+            onExecute = { shortcut -> executeShortcut(shortcut) },
+            onEdit = { shortcut -> editShortcut(shortcut) },
+            onDelete = { shortcut -> confirmDeleteShortcut(shortcut) }
         )
         shortcutsList.adapter = shortcutAdapter
     }
 
-    private fun loadShortcuts() {
-        val shortcuts = shortcutStorage.getAllShortcuts()
-        shortcutAdapter.updateShortcuts(shortcuts)
-
-        if (shortcuts.isEmpty()) {
-            emptyText.visibility = View.VISIBLE
-            shortcutsList.visibility = View.GONE
-        } else {
-            emptyText.visibility = View.GONE
-            shortcutsList.visibility = View.VISIBLE
+    private fun setupCreateGroupButton() {
+        findViewById<Button>(R.id.btnCreateGroup).setOnClickListener {
+            showCreateGroupDialog()
         }
     }
+
+    private fun loadData() {
+        val groups = shortcutStorage.getAllGroups()
+        val standaloneEvents = shortcutStorage.getStandaloneEvents()
+
+        groupAdapter.updateGroups(groups)
+        shortcutAdapter.updateShortcuts(standaloneEvents)
+
+        // Update ListView heights for nested scrolling
+        setListViewHeightBasedOnChildren(groupsList)
+        setListViewHeightBasedOnChildren(shortcutsList)
+
+        // Show/hide sections based on data
+        val hasGroups = groups.isNotEmpty()
+        val hasEvents = standaloneEvents.isNotEmpty()
+
+        groupsSection.visibility = if (hasGroups || true) View.VISIBLE else View.GONE // Always show for "New Group" button
+        eventsSection.visibility = if (hasEvents) View.VISIBLE else View.GONE
+        sectionDivider.visibility = if (hasGroups && hasEvents) View.VISIBLE else View.GONE
+        emptyText.visibility = if (!hasGroups && !hasEvents) View.VISIBLE else View.GONE
+
+        // Always show groups section for the "New Group" button
+        groupsSection.visibility = View.VISIBLE
+        if (!hasGroups) {
+            groupsList.visibility = View.GONE
+        } else {
+            groupsList.visibility = View.VISIBLE
+        }
+    }
+
+    private fun setListViewHeightBasedOnChildren(listView: ListView) {
+        val adapter = listView.adapter ?: return
+
+        var totalHeight = 0
+        for (i in 0 until adapter.count) {
+            val listItem = adapter.getView(i, null, listView)
+            listItem.measure(
+                View.MeasureSpec.makeMeasureSpec(listView.width, View.MeasureSpec.UNSPECIFIED),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+            )
+            totalHeight += listItem.measuredHeight
+        }
+
+        val params = listView.layoutParams
+        params.height = totalHeight + (listView.dividerHeight * (adapter.count - 1))
+        listView.layoutParams = params
+        listView.requestLayout()
+    }
+
+    // ==================== Group Operations ====================
+
+    private fun showCreateGroupDialog() {
+        val input = EditText(this)
+        input.hint = "Group name"
+
+        AlertDialog.Builder(this)
+            .setTitle("Create Event Group")
+            .setView(input)
+            .setPositiveButton("Create") { _, _ ->
+                val name = input.text.toString().trim()
+                if (name.isEmpty()) {
+                    Toast.makeText(this, "Please enter a name", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+
+                val group = EventGroup(
+                    id = UUID.randomUUID().toString(),
+                    name = name
+                )
+                shortcutStorage.saveGroup(group)
+                loadData()
+                Toast.makeText(this, "Group created: $name", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun executeGroup(group: EventGroup) {
+        if (!ClickAccessibilityService.isServiceRunning) {
+            Toast.makeText(this, "Please enable the accessibility service first", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        val events = shortcutStorage.getEventsForGroup(group.id)
+        if (events.isEmpty()) {
+            Toast.makeText(this, "No events in this group", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        Toast.makeText(this, "Executing group: ${group.name} (${events.size} events)", Toast.LENGTH_SHORT).show()
+        executeEventsSequentially(events)
+    }
+
+    private fun executeEventsSequentially(events: List<ClickShortcut>) {
+        var totalDelay = 0L
+
+        events.forEachIndexed { index, event ->
+            handler.postDelayed({
+                executeShortcut(event)
+            }, totalDelay)
+
+            totalDelay += 1500 + event.delayAfterMs
+            if (event.doubleClickEnabled) {
+                totalDelay += event.doubleClickDelayMs
+            }
+        }
+    }
+
+    private fun confirmDeleteGroup(group: EventGroup) {
+        val eventCount = shortcutStorage.getEventsForGroup(group.id).size
+
+        AlertDialog.Builder(this)
+            .setTitle("Delete Group")
+            .setMessage("Are you sure you want to delete \"${group.name}\"?\n\nThis group has $eventCount event(s). The events will be kept but removed from this group.")
+            .setPositiveButton("Delete") { _, _ ->
+                if (group.schedulingEnabled) {
+                    schedulerManager.cancelGroupSchedule(group.id)
+                }
+                shortcutStorage.deleteGroup(group.id, deleteEvents = false)
+                loadData()
+                Toast.makeText(this, "Deleted: ${group.name}", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun openGroupDetail(group: EventGroup) {
+        val intent = Intent(this, GroupDetailActivity::class.java)
+        intent.putExtra("group_id", group.id)
+        startActivity(intent)
+    }
+
+    // ==================== Shortcut/Event Operations ====================
 
     private fun executeShortcut(shortcut: ClickShortcut) {
         if (!ClickAccessibilityService.isServiceRunning) {
@@ -93,31 +244,18 @@ class ShortcutsActivity : AppCompatActivity() {
             val launchIntent = packageManager.getLaunchIntentForPackage(shortcut.packageName)
             if (launchIntent != null) {
                 startActivity(launchIntent)
-                Toast.makeText(
-                    this,
-                    "Executing shortcut: ${shortcut.name}",
-                    Toast.LENGTH_SHORT
-                ).show()
+                Toast.makeText(this, "Executing: ${shortcut.name}", Toast.LENGTH_SHORT).show()
             } else {
-                Toast.makeText(
-                    this,
-                    "App not found: ${shortcut.appName}",
-                    Toast.LENGTH_SHORT
-                ).show()
+                Toast.makeText(this, "App not found: ${shortcut.appName}", Toast.LENGTH_SHORT).show()
                 ClickAccessibilityService.pendingAction = false
             }
         } catch (e: Exception) {
-            Toast.makeText(
-                this,
-                "Failed to launch app: ${e.message}",
-                Toast.LENGTH_SHORT
-            ).show()
+            Toast.makeText(this, "Failed to launch app: ${e.message}", Toast.LENGTH_SHORT).show()
             ClickAccessibilityService.pendingAction = false
         }
     }
 
     private fun editShortcut(shortcut: ClickShortcut) {
-        // Create a custom layout for the edit dialog
         val dialogView = layoutInflater.inflate(R.layout.dialog_edit_shortcut, null)
 
         val nameInput = dialogView.findViewById<EditText>(R.id.etShortcutName)
@@ -129,7 +267,6 @@ class ShortcutsActivity : AppCompatActivity() {
         val scheduleCheckbox = dialogView.findViewById<CheckBox>(R.id.cbEnableScheduling)
         val scheduleSpinner = dialogView.findViewById<Spinner>(R.id.spinnerScheduleInterval)
 
-        // Pre-fill current values
         nameInput.setText(shortcut.name)
 
         if (shortcut.useCoordinates) {
@@ -148,7 +285,6 @@ class ShortcutsActivity : AppCompatActivity() {
         doubleClickCheckbox.isChecked = shortcut.doubleClickEnabled
         delayInput.setText((shortcut.doubleClickDelayMs / 1000.0).toString())
 
-        // Setup schedule interval spinner
         val scheduleIntervals = ScheduleInterval.values().filter { it != ScheduleInterval.NONE }
         val scheduleAdapter = ArrayAdapter(
             this,
@@ -158,7 +294,6 @@ class ShortcutsActivity : AppCompatActivity() {
         scheduleAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         scheduleSpinner.adapter = scheduleAdapter
 
-        // Set current schedule
         scheduleCheckbox.isChecked = shortcut.schedulingEnabled
         if (shortcut.scheduleInterval != ScheduleInterval.NONE) {
             val currentIndex = scheduleIntervals.indexOf(shortcut.scheduleInterval)
@@ -167,14 +302,13 @@ class ShortcutsActivity : AppCompatActivity() {
             }
         }
 
-        // Show/hide schedule spinner based on checkbox
         scheduleSpinner.visibility = if (scheduleCheckbox.isChecked) View.VISIBLE else View.GONE
         scheduleCheckbox.setOnCheckedChangeListener { _, isChecked ->
             scheduleSpinner.visibility = if (isChecked) View.VISIBLE else View.GONE
         }
 
         AlertDialog.Builder(this)
-            .setTitle("Edit Shortcut")
+            .setTitle("Edit Event")
             .setView(dialogView)
             .setPositiveButton("Save") { _, _ ->
                 val newName = nameInput.text.toString().trim()
@@ -193,7 +327,6 @@ class ShortcutsActivity : AppCompatActivity() {
                     ScheduleInterval.NONE
                 }
 
-                // Create updated shortcut
                 val updatedShortcut = if (shortcut.useCoordinates) {
                     val xStr = clickXInput.text.toString().trim()
                     val yStr = clickYInput.text.toString().trim()
@@ -226,21 +359,19 @@ class ShortcutsActivity : AppCompatActivity() {
                     )
                 }
 
-                // Update in storage
                 shortcutStorage.updateShortcut(updatedShortcut)
 
-                // Handle scheduling changes
                 if (shortcut.schedulingEnabled) {
                     schedulerManager.cancelSchedule(shortcut.id)
                 }
                 if (schedulingEnabled && scheduleInterval != ScheduleInterval.NONE) {
                     schedulerManager.scheduleShortcut(updatedShortcut)
-                    Toast.makeText(this, "Shortcut updated and rescheduled: $newName", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Event updated and rescheduled: $newName", Toast.LENGTH_SHORT).show()
                 } else {
-                    Toast.makeText(this, "Shortcut updated: $newName", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Event updated: $newName", Toast.LENGTH_SHORT).show()
                 }
 
-                loadShortcuts()
+                loadData()
             }
             .setNegativeButton("Cancel", null)
             .show()
@@ -248,7 +379,7 @@ class ShortcutsActivity : AppCompatActivity() {
 
     private fun confirmDeleteShortcut(shortcut: ClickShortcut) {
         AlertDialog.Builder(this)
-            .setTitle("Delete Shortcut")
+            .setTitle("Delete Event")
             .setMessage("Are you sure you want to delete \"${shortcut.name}\"?")
             .setPositiveButton("Delete") { _, _ ->
                 deleteShortcut(shortcut)
@@ -258,17 +389,12 @@ class ShortcutsActivity : AppCompatActivity() {
     }
 
     private fun deleteShortcut(shortcut: ClickShortcut) {
-        // Cancel any scheduled execution for this shortcut
         if (shortcut.schedulingEnabled) {
             schedulerManager.cancelSchedule(shortcut.id)
         }
 
         shortcutStorage.deleteShortcut(shortcut.id)
-        loadShortcuts()
-        Toast.makeText(
-            this,
-            "Deleted: ${shortcut.name}",
-            Toast.LENGTH_SHORT
-        ).show()
+        loadData()
+        Toast.makeText(this, "Deleted: ${shortcut.name}", Toast.LENGTH_SHORT).show()
     }
 }
