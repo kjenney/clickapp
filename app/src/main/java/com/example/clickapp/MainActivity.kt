@@ -508,19 +508,35 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        if (selectedPackageName.isEmpty()) {
+            Toast.makeText(this, "Please select an app first", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         val service = ClickAccessibilityService.instance
         if (service != null) {
-            val elements = service.getClickableElements()
-            if (elements.isEmpty()) {
-                Toast.makeText(this, "No clickable elements found in current window", Toast.LENGTH_SHORT).show()
-            } else {
-                AlertDialog.Builder(this)
-                    .setTitle("Clickable Elements")
-                    .setItems(elements.toTypedArray()) { _, which ->
-                        Toast.makeText(this, "Selected: ${elements[which]}", Toast.LENGTH_SHORT).show()
+            // First open the target app
+            val opened = service.openApp(selectedPackageName)
+            if (opened) {
+                Toast.makeText(this, "Opening app to scan elements...", Toast.LENGTH_SHORT).show()
+
+                // Wait for the app to fully load, then get elements
+                handler.postDelayed({
+                    val elements = service.getClickableElements()
+                    if (elements.isEmpty()) {
+                        Toast.makeText(this, "No clickable elements found in target app", Toast.LENGTH_SHORT).show()
+                    } else {
+                        AlertDialog.Builder(this)
+                            .setTitle("Clickable Elements")
+                            .setItems(elements.toTypedArray()) { _, which ->
+                                Toast.makeText(this, "Selected: ${elements[which]}", Toast.LENGTH_SHORT).show()
+                            }
+                            .setPositiveButton("Close", null)
+                            .show()
                     }
-                    .setPositiveButton("Close", null)
-                    .show()
+                }, 1500) // Same delay as other operations
+            } else {
+                Toast.makeText(this, "Could not open app", Toast.LENGTH_LONG).show()
             }
         }
     }
