@@ -19,7 +19,7 @@
             android:text="Group Name"
             android:textSize="16sp"
             android:textStyle="bold"
-            android:textColor="@android:color/black"/>
+            android:textColor="#FF9800"/>
 
         <TextView
             android:id="@+id/tvEventCount"
