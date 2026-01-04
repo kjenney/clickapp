@@ -96,6 +96,25 @@ class MainActivity : AppCompatActivity() {
         setupScheduleIntervalSpinner()
         updateServiceStatus()
         setupVersionFooter()
+        checkAndPromptAccessibilityService()
+    }
+
+    private fun checkAndPromptAccessibilityService() {
+        if (!ClickAccessibilityService.isServiceRunning) {
+            AlertDialog.Builder(this)
+                .setTitle("Enable Accessibility Service")
+                .setMessage("To use this app, you need to enable the ClickApp accessibility service.\n\n" +
+                        "1. Find 'ClickApp' in the list\n" +
+                        "2. Toggle it ON\n" +
+                        "3. Confirm the permissions")
+                .setPositiveButton("Open Settings") { _, _ ->
+                    val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                    startActivity(intent)
+                }
+                .setNegativeButton("Later", null)
+                .setCancelable(false)
+                .show()
+        }
     }
 
     private fun setupVersionFooter() {
@@ -320,6 +339,11 @@ class MainActivity : AppCompatActivity() {
             if (isEnabled) getColor(android.R.color.holo_green_dark)
             else getColor(android.R.color.holo_red_dark)
         )
+        binding.btnEnableService.visibility = if (isEnabled) {
+            android.view.View.GONE
+        } else {
+            android.view.View.VISIBLE
+        }
     }
 
     private fun openAccessibilitySettings() {
