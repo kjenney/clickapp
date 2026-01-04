@@ -168,21 +168,7 @@ class GroupDetailActivity : AppCompatActivity() {
     private fun showScheduleDialog() {
         val currentGroup = group ?: return
 
-        val dialogView = layoutInflater.inflate(R.layout.dialog_edit_shortcut, null)
-
-        // Hide unused fields
-        dialogView.findViewById<EditText>(R.id.etShortcutName).visibility = View.GONE
-        dialogView.findViewById<EditText>(R.id.etTargetText).visibility = View.GONE
-        dialogView.findViewById<EditText>(R.id.etClickX).visibility = View.GONE
-        dialogView.findViewById<EditText>(R.id.etClickY).visibility = View.GONE
-        dialogView.findViewById<CheckBox>(R.id.cbDoubleClick).visibility = View.GONE
-        dialogView.findViewById<EditText>(R.id.etDoubleClickDelay).visibility = View.GONE
-
-        // Hide labels if they exist
-        dialogView.findViewById<View>(R.id.labelName)?.visibility = View.GONE
-        dialogView.findViewById<View>(R.id.labelTarget)?.visibility = View.GONE
-        dialogView.findViewById<View>(R.id.labelCoordinates)?.visibility = View.GONE
-        dialogView.findViewById<View>(R.id.labelDoubleClick)?.visibility = View.GONE
+        val dialogView = layoutInflater.inflate(R.layout.dialog_group_schedule, null)
 
         val scheduleCheckbox = dialogView.findViewById<CheckBox>(R.id.cbEnableScheduling)
         val scheduleSpinner = dialogView.findViewById<Spinner>(R.id.spinnerScheduleInterval)
