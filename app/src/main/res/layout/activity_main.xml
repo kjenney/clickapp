@@ -193,7 +193,7 @@
             android:id="@+id/btnPickCoordinates"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Pick Coordinates from Screen"
+            android:text="Pick Coordinates from App"
             android:layout_marginBottom="8dp" />
 
         <Button

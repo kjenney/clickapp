@@ -439,12 +439,18 @@ class MainActivity : AppCompatActivity() {
         if (service != null) {
             val opened = service.openApp(selectedPackageName)
             if (opened) {
-                Toast.makeText(this, "Tap anywhere on screen to pick coordinates", Toast.LENGTH_LONG).show()
-
-                // Delay to let the target app open, then show overlay
+                // Delay to let the target app open
                 handler.postDelayed({
-                    val intent = Intent(this, CoordinatePickerService::class.java)
-                    startService(intent)
+                    // Scroll to top first
+                    Toast.makeText(this, "Scrolling to top...", Toast.LENGTH_SHORT).show()
+                    service.scrollToTop()
+
+                    // Wait for scroll, then show picker
+                    handler.postDelayed({
+                        Toast.makeText(this, "Tap anywhere to pick coordinates", Toast.LENGTH_LONG).show()
+                        val intent = Intent(this, CoordinatePickerService::class.java)
+                        startService(intent)
+                    }, 1000)
                 }, 1500)
             } else {
                 Toast.makeText(this, "Could not open app", Toast.LENGTH_LONG).show()
