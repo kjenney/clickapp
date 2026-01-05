@@ -41,6 +41,13 @@ class ClickAccessibilityService : AccessibilityService() {
         var doubleClickEnabled: Boolean = false
         var doubleClickDelayMs: Long = 2000
 
+        // Anchor-based positioning
+        var useAnchor: Boolean = false
+        var anchorText: String = ""
+        var anchorContentDescription: String = ""
+        var offsetX: Int = 0
+        var offsetY: Int = 0
+
         // Live monitoring
         var liveMonitoringEnabled: Boolean = false
 
@@ -54,7 +61,12 @@ class ClickAccessibilityService : AccessibilityService() {
             clickX: Int = -1,
             clickY: Int = -1,
             doubleClickEnabled: Boolean = false,
-            doubleClickDelayMs: Long = 2000
+            doubleClickDelayMs: Long = 2000,
+            useAnchor: Boolean = false,
+            anchorText: String = "",
+            anchorContentDescription: String = "",
+            offsetX: Int = 0,
+            offsetY: Int = 0
         ) {
             this.targetPackage = packageName
             this.useCoordinates = useCoordinates
@@ -63,6 +75,11 @@ class ClickAccessibilityService : AccessibilityService() {
             this.clickY = clickY
             this.doubleClickEnabled = doubleClickEnabled
             this.doubleClickDelayMs = doubleClickDelayMs
+            this.useAnchor = useAnchor
+            this.anchorText = anchorText
+            this.anchorContentDescription = anchorContentDescription
+            this.offsetX = offsetX
+            this.offsetY = offsetY
             this.pendingAction = true
         }
     }
@@ -123,14 +140,215 @@ class ClickAccessibilityService : AccessibilityService() {
     }
 
     /**
-     * Performs the configured click action (either by coordinates or text)
+     * Performs the configured click action (anchor-based, coordinates, or text)
      */
     private fun performConfiguredClick() {
-        if (useCoordinates && clickX >= 0 && clickY >= 0) {
-            performClickAtCoordinates(clickX.toFloat(), clickY.toFloat())
-        } else if (targetText.isNotEmpty()) {
-            performClickOnText(targetText)
+        when {
+            useAnchor -> performAnchorBasedClick()
+            useCoordinates && clickX >= 0 && clickY >= 0 -> performClickAtCoordinates(clickX.toFloat(), clickY.toFloat())
+            targetText.isNotEmpty() -> performClickOnText(targetText)
         }
+    }
+
+    /**
+     * Performs a click relative to an anchor element
+     * First scrolls to top, then finds anchor and clicks
+     */
+    private fun performAnchorBasedClick(): Boolean {
+        val rootNode = rootInActiveWindow ?: run {
+            Log.e(TAG, "Root node is null for anchor-based click")
+            return false
+        }
+
+        // First scroll to top to ensure consistent positioning
+        scrollToTop()
+
+        // Wait for scroll to complete, then find anchor and click
+        handler.postDelayed({
+            performAnchorClickAfterScroll()
+        }, 800)
+
+        return true
+    }
+
+    private fun performAnchorClickAfterScroll() {
+        val rootNode = rootInActiveWindow ?: run {
+            Log.e(TAG, "Root node is null for anchor-based click after scroll")
+            return
+        }
+
+        // Find the anchor element
+        val anchorNode = findAnchorNode(rootNode)
+        if (anchorNode == null) {
+            Log.e(TAG, "Anchor element not found: text='$anchorText', contentDesc='$anchorContentDescription'")
+            return
+        }
+
+        // Get anchor position
+        val anchorRect = Rect()
+        anchorNode.getBoundsInScreen(anchorRect)
+
+        // Calculate click position relative to anchor
+        val clickX = anchorRect.centerX() + offsetX
+        val clickY = anchorRect.centerY() + offsetY
+
+        Log.d(TAG, "Anchor found at (${anchorRect.centerX()}, ${anchorRect.centerY()}), clicking at ($clickX, $clickY)")
+
+        performClickAtCoordinates(clickX.toFloat(), clickY.toFloat())
+    }
+
+    /**
+     * Scrolls the current view to the top
+     */
+    fun scrollToTop() {
+        val rootNode = rootInActiveWindow ?: return
+
+        // Find scrollable node
+        val scrollableNode = findScrollableNode(rootNode)
+        if (scrollableNode != null) {
+            // Perform multiple scroll-to-top actions to ensure we're at the very top
+            repeat(5) {
+                scrollableNode.performAction(AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD)
+            }
+            Log.d(TAG, "Scrolled to top via accessibility action")
+        } else {
+            // Fallback: use swipe gesture to scroll up
+            performScrollGesture(isScrollUp = false) // Swipe down to scroll content up/to top
+            Log.d(TAG, "Scrolled to top via gesture")
+        }
+    }
+
+    /**
+     * Finds a scrollable node in the view hierarchy
+     */
+    private fun findScrollableNode(node: AccessibilityNodeInfo?): AccessibilityNodeInfo? {
+        if (node == null) return null
+
+        if (node.isScrollable) {
+            return node
+        }
+
+        for (i in 0 until node.childCount) {
+            val result = findScrollableNode(node.getChild(i))
+            if (result != null) {
+                return result
+            }
+        }
+
+        return null
+    }
+
+    /**
+     * Performs a scroll gesture
+     * @param isScrollUp true to scroll content up (swipe up), false to scroll content down (swipe down)
+     */
+    fun performScrollGesture(isScrollUp: Boolean): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+            return false
+        }
+
+        val displayMetrics = resources.displayMetrics
+        val screenWidth = displayMetrics.widthPixels
+        val screenHeight = displayMetrics.heightPixels
+
+        val centerX = screenWidth / 2f
+        val startY: Float
+        val endY: Float
+
+        if (isScrollUp) {
+            // Swipe up - start from bottom, move to top
+            startY = screenHeight * 0.7f
+            endY = screenHeight * 0.3f
+        } else {
+            // Swipe down - start from top, move to bottom (scrolls content to top)
+            startY = screenHeight * 0.3f
+            endY = screenHeight * 0.7f
+        }
+
+        val path = Path().apply {
+            moveTo(centerX, startY)
+            lineTo(centerX, endY)
+        }
+
+        val gesture = GestureDescription.Builder()
+            .addStroke(GestureDescription.StrokeDescription(path, 0, 300))
+            .build()
+
+        return dispatchGesture(gesture, null, null)
+    }
+
+    /**
+     * Finds an anchor node by text or content description
+     */
+    private fun findAnchorNode(rootNode: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+        // Try finding by text first
+        if (anchorText.isNotEmpty()) {
+            val nodes = rootNode.findAccessibilityNodeInfosByText(anchorText)
+            if (!nodes.isNullOrEmpty()) {
+                return nodes[0]
+            }
+        }
+
+        // Try finding by content description
+        if (anchorContentDescription.isNotEmpty()) {
+            val node = findNodeByContentDescription(rootNode, anchorContentDescription)
+            if (node != null) {
+                return node
+            }
+        }
+
+        // Recursive search for partial match
+        return findAnchorNodeRecursive(rootNode)
+    }
+
+    /**
+     * Recursively searches for anchor node
+     */
+    private fun findAnchorNodeRecursive(node: AccessibilityNodeInfo?): AccessibilityNodeInfo? {
+        if (node == null) return null
+
+        val nodeText = node.text?.toString() ?: ""
+        val contentDesc = node.contentDescription?.toString() ?: ""
+
+        // Check for match
+        if (anchorText.isNotEmpty() && nodeText.contains(anchorText, ignoreCase = true)) {
+            return node
+        }
+        if (anchorContentDescription.isNotEmpty() && contentDesc.contains(anchorContentDescription, ignoreCase = true)) {
+            return node
+        }
+
+        // Search children
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i)
+            val result = findAnchorNodeRecursive(child)
+            if (result != null) {
+                return result
+            }
+        }
+
+        return null
+    }
+
+    /**
+     * Finds a node by content description
+     */
+    private fun findNodeByContentDescription(node: AccessibilityNodeInfo?, targetDesc: String): AccessibilityNodeInfo? {
+        if (node == null) return null
+
+        val contentDesc = node.contentDescription?.toString() ?: ""
+        if (contentDesc.equals(targetDesc, ignoreCase = true)) {
+            return node
+        }
+
+        for (i in 0 until node.childCount) {
+            val result = findNodeByContentDescription(node.getChild(i), targetDesc)
+            if (result != null) {
+                return result
+            }
+        }
+
+        return null
     }
 
     /**

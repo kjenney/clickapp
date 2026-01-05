@@ -203,6 +203,101 @@
             android:text="Open App and Click at Coordinates"
             android:layout_marginBottom="24dp" />
 
+        <!-- Anchor-Based Click Section -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Option 3: Click Relative to Anchor"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="For dynamic canvases - click relative to a fixed UI element"
+            android:textSize="12sp"
+            android:textColor="#666666"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Anchor Element Text:"
+            android:textSize="14sp"
+            android:layout_marginBottom="4dp" />
+
+        <EditText
+            android:id="@+id/etAnchorText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Text of fixed UI element (toolbar, button)"
+            android:inputType="text"
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginEnd="8dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="X Offset from Anchor:"
+                    android:textSize="14sp" />
+
+                <EditText
+                    android:id="@+id/etOffsetX"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="0"
+                    android:inputType="numberSigned" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="8dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Y Offset from Anchor:"
+                    android:textSize="14sp" />
+
+                <EditText
+                    android:id="@+id/etOffsetY"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="0"
+                    android:inputType="numberSigned" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btnSetAnchorOffset"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Pick Anchor and Target from Screen"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/btnClickAnchor"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Open App and Click (Anchor Mode)"
+            android:layout_marginBottom="24dp" />
+
         <!-- Utility Section -->
         <View
             android:layout_width="match_parent"

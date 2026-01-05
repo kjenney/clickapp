@@ -238,6 +238,12 @@ class EventsActivity : AppCompatActivity() {
         ClickAccessibilityService.useCoordinates = shortcut.useCoordinates
         ClickAccessibilityService.doubleClickEnabled = shortcut.doubleClickEnabled
         ClickAccessibilityService.doubleClickDelayMs = shortcut.doubleClickDelayMs
+        // Anchor mode settings
+        ClickAccessibilityService.useAnchor = shortcut.useAnchor
+        ClickAccessibilityService.anchorText = shortcut.anchorText
+        ClickAccessibilityService.anchorContentDescription = shortcut.anchorContentDescription
+        ClickAccessibilityService.offsetX = shortcut.offsetX
+        ClickAccessibilityService.offsetY = shortcut.offsetY
         ClickAccessibilityService.pendingAction = true
 
         try {

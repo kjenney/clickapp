@@ -274,6 +274,12 @@ class GroupDetailActivity : AppCompatActivity() {
         ClickAccessibilityService.useCoordinates = event.useCoordinates
         ClickAccessibilityService.doubleClickEnabled = event.doubleClickEnabled
         ClickAccessibilityService.doubleClickDelayMs = event.doubleClickDelayMs
+        // Anchor mode settings
+        ClickAccessibilityService.useAnchor = event.useAnchor
+        ClickAccessibilityService.anchorText = event.anchorText
+        ClickAccessibilityService.anchorContentDescription = event.anchorContentDescription
+        ClickAccessibilityService.offsetX = event.offsetX
+        ClickAccessibilityService.offsetY = event.offsetY
         ClickAccessibilityService.pendingAction = true
 
         try {

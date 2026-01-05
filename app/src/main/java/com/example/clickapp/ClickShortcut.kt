@@ -20,7 +20,13 @@ data class ClickShortcut(
     val scheduleInterval: ScheduleInterval = ScheduleInterval.NONE,
     val groupId: String? = null,
     val orderInGroup: Int = 0,
-    val delayAfterMs: Long = 0
+    val delayAfterMs: Long = 0,
+    // Anchor-based positioning for dynamic canvases
+    val useAnchor: Boolean = false,
+    val anchorText: String = "",
+    val anchorContentDescription: String = "",
+    val offsetX: Int = 0,
+    val offsetY: Int = 0
 ) : Parcelable {
 
     fun toJson(): JSONObject {
@@ -40,6 +46,11 @@ data class ClickShortcut(
             put("groupId", groupId ?: JSONObject.NULL)
             put("orderInGroup", orderInGroup)
             put("delayAfterMs", delayAfterMs)
+            put("useAnchor", useAnchor)
+            put("anchorText", anchorText)
+            put("anchorContentDescription", anchorContentDescription)
+            put("offsetX", offsetX)
+            put("offsetY", offsetY)
         }
     }
 
@@ -60,16 +71,24 @@ data class ClickShortcut(
                 scheduleInterval = ScheduleInterval.fromString(json.optString("scheduleInterval", "NONE")),
                 groupId = json.optString("groupId", null).takeIf { it != "null" && it.isNotEmpty() },
                 orderInGroup = json.optInt("orderInGroup", 0),
-                delayAfterMs = json.optLong("delayAfterMs", 0)
+                delayAfterMs = json.optLong("delayAfterMs", 0),
+                useAnchor = json.optBoolean("useAnchor", false),
+                anchorText = json.optString("anchorText", ""),
+                anchorContentDescription = json.optString("anchorContentDescription", ""),
+                offsetX = json.optInt("offsetX", 0),
+                offsetY = json.optInt("offsetY", 0)
             )
         }
     }
 
     fun getDescription(): String {
-        val clickDescription = if (useCoordinates) {
-            "Tap at ($clickX, $clickY) in $appName"
-        } else {
-            "Tap \"$targetText\" in $appName"
+        val clickDescription = when {
+            useAnchor -> {
+                val anchor = anchorText.ifEmpty { anchorContentDescription }
+                "Tap offset ($offsetX, $offsetY) from \"$anchor\" in $appName"
+            }
+            useCoordinates -> "Tap at ($clickX, $clickY) in $appName"
+            else -> "Tap \"$targetText\" in $appName"
         }
 
         val scheduleDescription = if (schedulingEnabled && scheduleInterval != ScheduleInterval.NONE) {

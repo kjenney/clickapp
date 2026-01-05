@@ -68,13 +68,52 @@ class MainActivity : AppCompatActivity() {
                 val y = intent.getIntExtra(CoordinatePickerService.EXTRA_Y, 0)
 
                 handler.post {
-                    binding.etClickX.setText(x.toString())
-                    binding.etClickY.setText(y.toString())
-                    Toast.makeText(
-                        this@MainActivity,
-                        "Coordinates picked: ($x, $y)",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    when (anchorPickerState) {
+                        1 -> {
+                            // Step 1: Picked anchor position
+                            anchorX = x
+                            anchorY = y
+                            anchorPickerState = 2
+
+                            Toast.makeText(
+                                this@MainActivity,
+                                "Anchor position saved: ($x, $y)\nNow tap on the TARGET location",
+                                Toast.LENGTH_LONG
+                            ).show()
+
+                            // Restart picker for target
+                            handler.postDelayed({
+                                val serviceIntent = Intent(this@MainActivity, CoordinatePickerService::class.java)
+                                startService(serviceIntent)
+                            }, 500)
+                        }
+                        2 -> {
+                            // Step 2: Picked target position - calculate offset
+                            val offsetX = x - anchorX
+                            val offsetY = y - anchorY
+
+                            binding.etOffsetX.setText(offsetX.toString())
+                            binding.etOffsetY.setText(offsetY.toString())
+
+                            anchorPickerState = 0
+
+                            Toast.makeText(
+                                this@MainActivity,
+                                "Offset calculated: ($offsetX, $offsetY) from anchor",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                        else -> {
+                            // Normal coordinate picking (Option 2)
+                            binding.etClickX.setText(x.toString())
+                            binding.etClickY.setText(y.toString())
+                            Toast.makeText(
+                                this@MainActivity,
+                                "Coordinates picked: ($x, $y)",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
                 }
             }
         }
@@ -305,6 +344,15 @@ class MainActivity : AppCompatActivity() {
             saveAsShortcut()
         }
 
+        // Anchor-based click buttons
+        binding.btnSetAnchorOffset.setOnClickListener {
+            startAnchorPicker()
+        }
+
+        binding.btnClickAnchor.setOnClickListener {
+            performAnchorBasedClick()
+        }
+
         // Live monitoring toggle
         binding.switchLiveMonitoring.setOnCheckedChangeListener { _, isChecked ->
             if (!ClickAccessibilityService.isServiceRunning && isChecked) {
@@ -527,6 +575,122 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun performAnchorBasedClick() {
+        if (!ClickAccessibilityService.isServiceRunning) {
+            Toast.makeText(this, "Please enable the accessibility service first", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        val anchorText = binding.etAnchorText.text.toString().trim()
+        val offsetXStr = binding.etOffsetX.text.toString().trim()
+        val offsetYStr = binding.etOffsetY.text.toString().trim()
+
+        if (selectedPackageName.isEmpty()) {
+            Toast.makeText(this, "Please select an app", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (anchorText.isEmpty()) {
+            Toast.makeText(this, "Please enter anchor element text", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val offsetX = offsetXStr.toIntOrNull() ?: 0
+        val offsetY = offsetYStr.toIntOrNull() ?: 0
+
+        // Configure double-click settings
+        configureDoubleClick()
+
+        // Configure the accessibility service for anchor mode
+        ClickAccessibilityService.targetPackage = selectedPackageName
+        ClickAccessibilityService.useAnchor = true
+        ClickAccessibilityService.anchorText = anchorText
+        ClickAccessibilityService.anchorContentDescription = ""
+        ClickAccessibilityService.offsetX = offsetX
+        ClickAccessibilityService.offsetY = offsetY
+        ClickAccessibilityService.useCoordinates = false
+        ClickAccessibilityService.pendingAction = true
+
+        // Open the target app
+        val service = ClickAccessibilityService.instance
+        if (service != null) {
+            val opened = service.openApp(selectedPackageName)
+            if (opened) {
+                val clickMsg = if (ClickAccessibilityService.doubleClickEnabled) {
+                    "Opening app and will click twice at offset ($offsetX, $offsetY) from '$anchorText'"
+                } else {
+                    "Opening app and will click at offset ($offsetX, $offsetY) from '$anchorText'"
+                }
+                Toast.makeText(this, clickMsg, Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Could not open app.", Toast.LENGTH_LONG).show()
+                ClickAccessibilityService.pendingAction = false
+            }
+        }
+    }
+
+    private var anchorPickerState = 0 // 0 = not started, 1 = picking anchor, 2 = picking target
+    private var anchorX = 0
+    private var anchorY = 0
+
+    private fun startAnchorPicker() {
+        if (!Settings.canDrawOverlays(this)) {
+            AlertDialog.Builder(this)
+                .setTitle("Permission Required")
+                .setMessage("To pick anchor and target positions, this app needs permission to draw over other apps.\n\nYou will be taken to settings to enable this permission.")
+                .setPositiveButton("Open Settings") { _, _ ->
+                    val intent = Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:$packageName")
+                    )
+                    startActivityForResult(intent, OVERLAY_PERMISSION_REQUEST_CODE)
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+            return
+        }
+
+        if (selectedPackageName.isEmpty()) {
+            Toast.makeText(this, "Please select an app first", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Pick Anchor and Target")
+            .setMessage("This process has two steps:\n\n" +
+                    "1. First, tap on a FIXED UI element (toolbar, button) that doesn't move when scrolling - this is your anchor\n\n" +
+                    "2. Then, tap on the location you want to click - the offset from anchor will be calculated\n\n" +
+                    "The target app will open. Tap the anchor first, then the target.")
+            .setPositiveButton("Start") { _, _ ->
+                anchorPickerState = 1
+                launchAnchorPicker()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun launchAnchorPicker() {
+        // First open the target app
+        val service = ClickAccessibilityService.instance
+        if (service != null && selectedPackageName.isNotEmpty()) {
+            service.openApp(selectedPackageName)
+
+            handler.postDelayed({
+                // Scroll to top first
+                Toast.makeText(this, "Scrolling to top...", Toast.LENGTH_SHORT).show()
+                service.scrollToTop()
+
+                // Wait for scroll, then show picker
+                handler.postDelayed({
+                    val serviceIntent = Intent(this, CoordinatePickerService::class.java)
+                    startService(serviceIntent)
+
+                    Toast.makeText(this, "Step 1: Tap on the ANCHOR element (fixed UI)", Toast.LENGTH_LONG).show()
+                }, 1000)
+            }, 1500)
+        }
+    }
+
     private fun showClickableElements() {
         if (!ClickAccessibilityService.isServiceRunning) {
             Toast.makeText(this, "Please enable the accessibility service first", Toast.LENGTH_LONG).show()
@@ -578,9 +742,21 @@ class MainActivity : AppCompatActivity() {
         val x = xStr.toIntOrNull() ?: -1
         val y = yStr.toIntOrNull() ?: -1
 
+        // Check anchor mode
+        val anchorText = binding.etAnchorText.text.toString().trim()
+        val offsetXStr = binding.etOffsetX.text.toString().trim()
+        val offsetYStr = binding.etOffsetY.text.toString().trim()
+        val offsetX = offsetXStr.toIntOrNull() ?: 0
+        val offsetY = offsetYStr.toIntOrNull() ?: 0
+
+        // Determine which mode to use
+        val useAnchor = anchorText.isNotEmpty() && (offsetX != 0 || offsetY != 0)
         val useCoordinates: Boolean
-        if (targetText.isEmpty() && (x == -1 || y == -1)) {
-            Toast.makeText(this, "Please configure either text or coordinates", Toast.LENGTH_SHORT).show()
+
+        if (useAnchor) {
+            useCoordinates = false
+        } else if (targetText.isEmpty() && (x == -1 || y == -1)) {
+            Toast.makeText(this, "Please configure text, coordinates, or anchor mode", Toast.LENGTH_SHORT).show()
             return
         } else if (targetText.isNotEmpty()) {
             useCoordinates = false
@@ -592,16 +768,16 @@ class MainActivity : AppCompatActivity() {
         input.hint = "Shortcut name"
 
         val selectedApp = installedApps.find { it.packageName == selectedPackageName }
-        val defaultName = if (useCoordinates) {
-            "Click at ($x, $y) in ${selectedApp?.appName ?: selectedPackageName}"
-        } else {
-            "Click \"$targetText\" in ${selectedApp?.appName ?: selectedPackageName}"
+        val defaultName = when {
+            useAnchor -> "Click offset ($offsetX, $offsetY) from \"$anchorText\" in ${selectedApp?.appName ?: selectedPackageName}"
+            useCoordinates -> "Click at ($x, $y) in ${selectedApp?.appName ?: selectedPackageName}"
+            else -> "Click \"$targetText\" in ${selectedApp?.appName ?: selectedPackageName}"
         }
         input.setText(defaultName)
 
         AlertDialog.Builder(this)
-            .setTitle("Save Shortcut")
-            .setMessage("Enter a name for this shortcut:")
+            .setTitle("Save Event")
+            .setMessage("Enter a name for this event:")
             .setView(input)
             .setPositiveButton("Save") { _, _ ->
                 val name = input.text.toString().trim()
@@ -621,14 +797,19 @@ class MainActivity : AppCompatActivity() {
                     name = name,
                     appName = selectedApp?.appName ?: selectedPackageName,
                     packageName = selectedPackageName,
-                    useCoordinates = useCoordinates,
-                    targetText = if (useCoordinates) "" else targetText,
-                    clickX = if (useCoordinates) x else -1,
-                    clickY = if (useCoordinates) y else -1,
+                    useCoordinates = useCoordinates && !useAnchor,
+                    targetText = if (useCoordinates || useAnchor) "" else targetText,
+                    clickX = if (useCoordinates && !useAnchor) x else -1,
+                    clickY = if (useCoordinates && !useAnchor) y else -1,
                     doubleClickEnabled = binding.cbDoubleClick.isChecked,
                     doubleClickDelayMs = (delaySeconds * 1000).toLong(),
                     schedulingEnabled = schedulingEnabled,
-                    scheduleInterval = scheduleInterval
+                    scheduleInterval = scheduleInterval,
+                    useAnchor = useAnchor,
+                    anchorText = if (useAnchor) anchorText else "",
+                    anchorContentDescription = "",
+                    offsetX = if (useAnchor) offsetX else 0,
+                    offsetY = if (useAnchor) offsetY else 0
                 )
 
                 val storage = ShortcutStorage(this)
