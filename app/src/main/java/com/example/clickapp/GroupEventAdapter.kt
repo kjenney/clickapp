@@ -12,6 +12,7 @@ class GroupEventAdapter(
     private val context: Context,
     private var events: List<ClickShortcut>,
     private val onConfigureDelay: (ClickShortcut) -> Unit,
+    private val onCopy: (ClickShortcut) -> Unit,
     private val onRemove: (ClickShortcut) -> Unit
 ) : BaseAdapter() {
 
@@ -32,6 +33,7 @@ class GroupEventAdapter(
         val descriptionText = view.findViewById<TextView>(R.id.tvEventDescription)
         val delayText = view.findViewById<TextView>(R.id.tvDelayAfter)
         val delayButton = view.findViewById<Button>(R.id.btnDelay)
+        val copyButton = view.findViewById<Button>(R.id.btnCopy)
         val removeButton = view.findViewById<Button>(R.id.btnRemove)
 
         orderText.text = "${position + 1}."
@@ -46,6 +48,10 @@ class GroupEventAdapter(
 
         delayButton.setOnClickListener {
             onConfigureDelay(event)
+        }
+
+        copyButton.setOnClickListener {
+            onCopy(event)
         }
 
         removeButton.setOnClickListener {

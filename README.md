@@ -11,4 +11,5 @@ Features:
 * Allows saving events for future use
 * Scheduling feature for saved events
 * Allows picking coordinates directly by launching an app and clicking
-* Allows gropuing saved events into groups that fire sequentially
+* Allows grouping saved events into groups that fire sequentially
+* Allow copying of saved events

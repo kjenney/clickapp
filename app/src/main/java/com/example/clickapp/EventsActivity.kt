@@ -80,6 +80,7 @@ class EventsActivity : AppCompatActivity() {
             context = this,
             shortcuts = emptyList(),
             onExecute = { shortcut -> executeShortcut(shortcut) },
+            onCopy = { shortcut -> showCopyEventDialog(shortcut) },
             onEdit = { shortcut -> editShortcut(shortcut) },
             onDelete = { shortcut -> confirmDeleteShortcut(shortcut) }
         )
@@ -395,5 +396,55 @@ class EventsActivity : AppCompatActivity() {
         shortcutStorage.deleteShortcut(shortcut.id)
         loadData()
         Toast.makeText(this, "Deleted: ${shortcut.name}", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun showCopyEventDialog(shortcut: ClickShortcut) {
+        val groups = shortcutStorage.getAllGroups()
+        val options = mutableListOf("Copy as Standalone Event")
+        options.addAll(groups.map { "Copy to Group: ${it.name}" })
+
+        AlertDialog.Builder(this)
+            .setTitle("Copy Event: ${shortcut.name}")
+            .setItems(options.toTypedArray()) { _, which ->
+                if (which == 0) {
+                    // Copy as standalone
+                    copyEventAsStandalone(shortcut)
+                } else {
+                    // Copy to group
+                    val selectedGroup = groups[which - 1]
+                    copyEventToGroup(shortcut, selectedGroup)
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun copyEventAsStandalone(shortcut: ClickShortcut) {
+        val copiedEvent = shortcut.copy(
+            id = UUID.randomUUID().toString(),
+            name = "${shortcut.name} (Copy)",
+            groupId = null,
+            orderInGroup = 0,
+            schedulingEnabled = false,
+            scheduleInterval = ScheduleInterval.NONE
+        )
+        shortcutStorage.saveShortcut(copiedEvent)
+        loadData()
+        Toast.makeText(this, "Copied: ${copiedEvent.name}", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun copyEventToGroup(shortcut: ClickShortcut, group: EventGroup) {
+        val eventsInGroup = shortcutStorage.getEventsForGroup(group.id)
+        val copiedEvent = shortcut.copy(
+            id = UUID.randomUUID().toString(),
+            name = "${shortcut.name} (Copy)",
+            groupId = group.id,
+            orderInGroup = eventsInGroup.size,
+            schedulingEnabled = false,
+            scheduleInterval = ScheduleInterval.NONE
+        )
+        shortcutStorage.saveShortcut(copiedEvent)
+        loadData()
+        Toast.makeText(this, "Copied to group: ${group.name}", Toast.LENGTH_SHORT).show()
     }
 }

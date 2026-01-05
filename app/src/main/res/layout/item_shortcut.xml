@@ -52,23 +52,39 @@
         android:id="@+id/executeButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Execute"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="4dp"/>
+        android:text="Run"
+        android:textSize="11sp"
+        android:minWidth="48dp"
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="2dp"/>
+
+    <Button
+        android:id="@+id/copyButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Copy"
+        android:textSize="11sp"
+        android:minWidth="48dp"
+        android:layout_marginEnd="2dp"
+        android:backgroundTint="#2196F3"/>
 
     <Button
         android:id="@+id/editButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Edit"
-        android:layout_marginEnd="4dp"
+        android:textSize="11sp"
+        android:minWidth="48dp"
+        android:layout_marginEnd="2dp"
         android:backgroundTint="#FF9800"/>
 
     <Button
         android:id="@+id/deleteButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Delete"
+        android:text="Del"
+        android:textSize="11sp"
+        android:minWidth="48dp"
         android:backgroundTint="#ff4444"/>
 
 </LinearLayout>
