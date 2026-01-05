@@ -145,9 +145,22 @@ class ClickAccessibilityService : AccessibilityService() {
     private fun performConfiguredClick() {
         when {
             useAnchor -> performAnchorBasedClick()
-            useCoordinates && clickX >= 0 && clickY >= 0 -> performClickAtCoordinates(clickX.toFloat(), clickY.toFloat())
+            useCoordinates && clickX >= 0 && clickY >= 0 -> performCoordinatesClickWithScroll()
             targetText.isNotEmpty() -> performClickOnText(targetText)
         }
+    }
+
+    /**
+     * Scrolls to top first, then performs click at coordinates
+     */
+    private fun performCoordinatesClickWithScroll() {
+        // First scroll to top to ensure consistent positioning
+        scrollToTop()
+
+        // Wait for scroll to complete, then click
+        handler.postDelayed({
+            performClickAtCoordinates(clickX.toFloat(), clickY.toFloat())
+        }, 800)
     }
 
     /**
