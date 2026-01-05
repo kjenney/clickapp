@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.Gravity
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -249,9 +250,11 @@ class ClickAccessibilityService : AccessibilityService() {
                     WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                             WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
                             WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                            WindowManager.LayoutParams.FLAG_FULLSCREEN,
                     PixelFormat.TRANSLUCENT
-                )
+                ).apply {
+                    gravity = Gravity.TOP or Gravity.START
+                }
 
                 windowManager?.addView(clickIndicator, params)
                 isIndicatorShowing = true
