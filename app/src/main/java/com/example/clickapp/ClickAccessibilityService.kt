@@ -4,11 +4,13 @@ import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.content.Intent
 import android.graphics.Path
+import android.graphics.PixelFormat
 import android.graphics.Rect
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 
@@ -67,6 +69,12 @@ class ClickAccessibilityService : AccessibilityService() {
     private val handler = Handler(Looper.getMainLooper())
     private var lastBroadcastTime: Long = 0
     private val broadcastDebounceMs: Long = 300 // Debounce to avoid flooding
+
+    // Click indicator overlay
+    private var clickIndicator: ClickIndicatorOverlay? = null
+    private var windowManager: WindowManager? = null
+    private var isIndicatorShowing = false
+    private val indicatorDurationMs: Long = 800
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -212,9 +220,70 @@ class ClickAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        hideClickIndicator()
         instance = null
         isServiceRunning = false
         Log.d(TAG, "Accessibility Service destroyed")
+    }
+
+    /**
+     * Shows a red dot indicator at the click location
+     */
+    private fun showClickIndicator(x: Float, y: Float) {
+        handler.post {
+            try {
+                if (windowManager == null) {
+                    windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+                }
+
+                // Remove existing indicator if showing
+                hideClickIndicator()
+
+                clickIndicator = ClickIndicatorOverlay(this)
+                clickIndicator?.setClickPosition(x, y)
+
+                val params = WindowManager.LayoutParams(
+                    WindowManager.LayoutParams.MATCH_PARENT,
+                    WindowManager.LayoutParams.MATCH_PARENT,
+                    WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                    PixelFormat.TRANSLUCENT
+                )
+
+                windowManager?.addView(clickIndicator, params)
+                isIndicatorShowing = true
+                Log.d(TAG, "Click indicator shown at ($x, $y)")
+
+                // Auto-hide after duration
+                handler.postDelayed({
+                    hideClickIndicator()
+                }, indicatorDurationMs)
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Error showing click indicator: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Hides the click indicator overlay
+     */
+    private fun hideClickIndicator() {
+        try {
+            if (isIndicatorShowing && clickIndicator != null) {
+                windowManager?.removeView(clickIndicator)
+                clickIndicator = null
+                isIndicatorShowing = false
+                Log.d(TAG, "Click indicator hidden")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error hiding click indicator: ${e.message}")
+            clickIndicator = null
+            isIndicatorShowing = false
+        }
     }
 
     /**
@@ -246,6 +315,9 @@ class ClickAccessibilityService : AccessibilityService() {
             Log.e(TAG, "Gesture API requires Android N or higher")
             return false
         }
+
+        // Show click indicator
+        showClickIndicator(x, y)
 
         val path = Path().apply {
             moveTo(x, y)
@@ -324,8 +396,15 @@ class ClickAccessibilityService : AccessibilityService() {
      * Clicks on a specific accessibility node
      */
     private fun clickNode(node: AccessibilityNodeInfo): Boolean {
+        // Get node bounds for indicator
+        val rect = Rect()
+        node.getBoundsInScreen(rect)
+        val centerX = rect.centerX().toFloat()
+        val centerY = rect.centerY().toFloat()
+
         // Try clicking the node directly
         if (node.isClickable) {
+            showClickIndicator(centerX, centerY)
             val result = node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
             Log.d(TAG, "Clicked on node: ${node.text}, result: $result")
             return result
@@ -335,6 +414,9 @@ class ClickAccessibilityService : AccessibilityService() {
         var parent = node.parent
         while (parent != null) {
             if (parent.isClickable) {
+                val parentRect = Rect()
+                parent.getBoundsInScreen(parentRect)
+                showClickIndicator(parentRect.centerX().toFloat(), parentRect.centerY().toFloat())
                 val result = parent.performAction(AccessibilityNodeInfo.ACTION_CLICK)
                 Log.d(TAG, "Clicked on parent node, result: $result")
                 return result
@@ -343,11 +425,6 @@ class ClickAccessibilityService : AccessibilityService() {
         }
 
         // Last resort: click at the node's coordinates
-        val rect = Rect()
-        node.getBoundsInScreen(rect)
-        val centerX = rect.centerX().toFloat()
-        val centerY = rect.centerY().toFloat()
-
         return performClickAtCoordinates(centerX, centerY)
     }
 

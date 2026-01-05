@@ -13,3 +13,4 @@ Features:
 * Allows picking coordinates directly by launching an app and clicking
 * Allows grouping saved events into groups that fire sequentially
 * Allow copying of saved events
+* Includes a click indicator to troubleshoot events
