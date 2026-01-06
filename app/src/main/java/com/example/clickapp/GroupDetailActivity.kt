@@ -280,6 +280,7 @@ class GroupDetailActivity : AppCompatActivity() {
         ClickAccessibilityService.anchorContentDescription = event.anchorContentDescription
         ClickAccessibilityService.offsetX = event.offsetX
         ClickAccessibilityService.offsetY = event.offsetY
+        ClickAccessibilityService.scrollDirection = event.scrollDirection
         ClickAccessibilityService.pendingAction = true
 
         try {

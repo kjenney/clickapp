@@ -26,7 +26,9 @@ data class ClickShortcut(
     val anchorText: String = "",
     val anchorContentDescription: String = "",
     val offsetX: Int = 0,
-    val offsetY: Int = 0
+    val offsetY: Int = 0,
+    // Scroll before click
+    val scrollDirection: ScrollDirection = ScrollDirection.NONE
 ) : Parcelable {
 
     fun toJson(): JSONObject {
@@ -51,6 +53,7 @@ data class ClickShortcut(
             put("anchorContentDescription", anchorContentDescription)
             put("offsetX", offsetX)
             put("offsetY", offsetY)
+            put("scrollDirection", scrollDirection.name)
         }
     }
 
@@ -76,19 +79,26 @@ data class ClickShortcut(
                 anchorText = json.optString("anchorText", ""),
                 anchorContentDescription = json.optString("anchorContentDescription", ""),
                 offsetX = json.optInt("offsetX", 0),
-                offsetY = json.optInt("offsetY", 0)
+                offsetY = json.optInt("offsetY", 0),
+                scrollDirection = ScrollDirection.fromString(json.optString("scrollDirection", "NONE"))
             )
         }
     }
 
     fun getDescription(): String {
+        val scrollPrefix = if (scrollDirection != ScrollDirection.NONE) {
+            "[${scrollDirection.displayName}] "
+        } else {
+            ""
+        }
+
         val clickDescription = when {
             useAnchor -> {
                 val anchor = anchorText.ifEmpty { anchorContentDescription }
-                "Tap offset ($offsetX, $offsetY) from \"$anchor\" in $appName"
+                "${scrollPrefix}Tap offset ($offsetX, $offsetY) from \"$anchor\" in $appName"
             }
-            useCoordinates -> "Tap at ($clickX, $clickY) in $appName"
-            else -> "Tap \"$targetText\" in $appName"
+            useCoordinates -> "${scrollPrefix}Tap at ($clickX, $clickY) in $appName"
+            else -> "${scrollPrefix}Tap \"$targetText\" in $appName"
         }
 
         val scheduleDescription = if (schedulingEnabled && scheduleInterval != ScheduleInterval.NONE) {

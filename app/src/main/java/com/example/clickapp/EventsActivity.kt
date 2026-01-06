@@ -244,6 +244,7 @@ class EventsActivity : AppCompatActivity() {
         ClickAccessibilityService.anchorContentDescription = shortcut.anchorContentDescription
         ClickAccessibilityService.offsetX = shortcut.offsetX
         ClickAccessibilityService.offsetY = shortcut.offsetY
+        ClickAccessibilityService.scrollDirection = shortcut.scrollDirection
         ClickAccessibilityService.pendingAction = true
 
         try {

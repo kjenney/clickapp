@@ -34,6 +34,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var schedulerManager: SchedulerManager
     private var selectedScheduleInterval = ScheduleInterval.NONE
+    private var selectedScrollDirection = ScrollDirection.NONE
 
     private val elementsReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -133,6 +134,7 @@ class MainActivity : AppCompatActivity() {
         setupElementsList()
         setupUI()
         setupScheduleIntervalSpinner()
+        setupScrollDirectionSpinner()
         updateServiceStatus()
         setupVersionFooter()
         checkAndPromptAccessibilityService()
@@ -313,6 +315,28 @@ class MainActivity : AppCompatActivity() {
         binding.spinnerScheduleInterval.isEnabled = false
     }
 
+    private fun setupScrollDirectionSpinner() {
+        val directions = ScrollDirection.values()
+        val directionNames = directions.map { it.displayName }
+        val adapter = android.widget.ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_item,
+            directionNames
+        )
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.spinnerScrollDirection.adapter = adapter
+
+        binding.spinnerScrollDirection.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
+                selectedScrollDirection = directions[position]
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+                selectedScrollDirection = ScrollDirection.NONE
+            }
+        }
+    }
+
     private fun setupUI() {
         // Enable accessibility service button
         binding.btnEnableService.setOnClickListener {
@@ -441,16 +465,32 @@ class MainActivity : AppCompatActivity() {
             if (opened) {
                 // Delay to let the target app open
                 handler.postDelayed({
-                    // Scroll to top first
-                    Toast.makeText(this, "Scrolling to top...", Toast.LENGTH_SHORT).show()
-                    service.scrollToTop()
-
-                    // Wait for scroll, then show picker
-                    handler.postDelayed({
-                        Toast.makeText(this, "Tap anywhere to pick coordinates", Toast.LENGTH_LONG).show()
-                        val intent = Intent(this, CoordinatePickerService::class.java)
-                        startService(intent)
-                    }, 1000)
+                    // Scroll based on selected direction
+                    when (selectedScrollDirection) {
+                        ScrollDirection.TOP -> {
+                            Toast.makeText(this, "Scrolling to top...", Toast.LENGTH_SHORT).show()
+                            service.scrollToTop()
+                            handler.postDelayed({
+                                Toast.makeText(this, "Tap anywhere to pick coordinates", Toast.LENGTH_LONG).show()
+                                val intent = Intent(this, CoordinatePickerService::class.java)
+                                startService(intent)
+                            }, 1000)
+                        }
+                        ScrollDirection.BOTTOM -> {
+                            Toast.makeText(this, "Scrolling to bottom...", Toast.LENGTH_SHORT).show()
+                            service.scrollToBottom()
+                            handler.postDelayed({
+                                Toast.makeText(this, "Tap anywhere to pick coordinates", Toast.LENGTH_LONG).show()
+                                val intent = Intent(this, CoordinatePickerService::class.java)
+                                startService(intent)
+                            }, 1000)
+                        }
+                        ScrollDirection.NONE -> {
+                            Toast.makeText(this, "Tap anywhere to pick coordinates", Toast.LENGTH_LONG).show()
+                            val intent = Intent(this, CoordinatePickerService::class.java)
+                            startService(intent)
+                        }
+                    }
                 }, 1500)
             } else {
                 Toast.makeText(this, "Could not open app", Toast.LENGTH_LONG).show()
@@ -561,6 +601,8 @@ class MainActivity : AppCompatActivity() {
         ClickAccessibilityService.clickX = x
         ClickAccessibilityService.clickY = y
         ClickAccessibilityService.useCoordinates = true
+        ClickAccessibilityService.useAnchor = false
+        ClickAccessibilityService.scrollDirection = selectedScrollDirection
         ClickAccessibilityService.pendingAction = true
 
         // Open the target app
@@ -568,10 +610,13 @@ class MainActivity : AppCompatActivity() {
         if (service != null) {
             val opened = service.openApp(selectedPackageName)
             if (opened) {
+                val scrollMsg = if (selectedScrollDirection != ScrollDirection.NONE) {
+                    " (${selectedScrollDirection.displayName})"
+                } else ""
                 val clickMsg = if (ClickAccessibilityService.doubleClickEnabled) {
-                    "Opening app and will click twice at ($x, $y)"
+                    "Opening app and will click twice at ($x, $y)$scrollMsg"
                 } else {
-                    "Opening app and will click at ($x, $y)"
+                    "Opening app and will click at ($x, $y)$scrollMsg"
                 }
                 Toast.makeText(this, clickMsg, Toast.LENGTH_SHORT).show()
             } else {
@@ -615,6 +660,7 @@ class MainActivity : AppCompatActivity() {
         ClickAccessibilityService.offsetX = offsetX
         ClickAccessibilityService.offsetY = offsetY
         ClickAccessibilityService.useCoordinates = false
+        ClickAccessibilityService.scrollDirection = selectedScrollDirection
         ClickAccessibilityService.pendingAction = true
 
         // Open the target app
@@ -622,10 +668,13 @@ class MainActivity : AppCompatActivity() {
         if (service != null) {
             val opened = service.openApp(selectedPackageName)
             if (opened) {
+                val scrollMsg = if (selectedScrollDirection != ScrollDirection.NONE) {
+                    " (${selectedScrollDirection.displayName})"
+                } else ""
                 val clickMsg = if (ClickAccessibilityService.doubleClickEnabled) {
-                    "Opening app and will click twice at offset ($offsetX, $offsetY) from '$anchorText'"
+                    "Opening app and will click twice at offset ($offsetX, $offsetY) from '$anchorText'$scrollMsg"
                 } else {
-                    "Opening app and will click at offset ($offsetX, $offsetY) from '$anchorText'"
+                    "Opening app and will click at offset ($offsetX, $offsetY) from '$anchorText'$scrollMsg"
                 }
                 Toast.makeText(this, clickMsg, Toast.LENGTH_SHORT).show()
             } else {
@@ -682,17 +731,32 @@ class MainActivity : AppCompatActivity() {
             service.openApp(selectedPackageName)
 
             handler.postDelayed({
-                // Scroll to top first
-                Toast.makeText(this, "Scrolling to top...", Toast.LENGTH_SHORT).show()
-                service.scrollToTop()
-
-                // Wait for scroll, then show picker
-                handler.postDelayed({
-                    val serviceIntent = Intent(this, CoordinatePickerService::class.java)
-                    startService(serviceIntent)
-
-                    Toast.makeText(this, "Step 1: Tap on the ANCHOR element (fixed UI)", Toast.LENGTH_LONG).show()
-                }, 1000)
+                // Scroll based on selected direction
+                when (selectedScrollDirection) {
+                    ScrollDirection.TOP -> {
+                        Toast.makeText(this, "Scrolling to top...", Toast.LENGTH_SHORT).show()
+                        service.scrollToTop()
+                        handler.postDelayed({
+                            val serviceIntent = Intent(this, CoordinatePickerService::class.java)
+                            startService(serviceIntent)
+                            Toast.makeText(this, "Step 1: Tap on the ANCHOR element (fixed UI)", Toast.LENGTH_LONG).show()
+                        }, 1000)
+                    }
+                    ScrollDirection.BOTTOM -> {
+                        Toast.makeText(this, "Scrolling to bottom...", Toast.LENGTH_SHORT).show()
+                        service.scrollToBottom()
+                        handler.postDelayed({
+                            val serviceIntent = Intent(this, CoordinatePickerService::class.java)
+                            startService(serviceIntent)
+                            Toast.makeText(this, "Step 1: Tap on the ANCHOR element (fixed UI)", Toast.LENGTH_LONG).show()
+                        }, 1000)
+                    }
+                    ScrollDirection.NONE -> {
+                        val serviceIntent = Intent(this, CoordinatePickerService::class.java)
+                        startService(serviceIntent)
+                        Toast.makeText(this, "Step 1: Tap on the ANCHOR element (fixed UI)", Toast.LENGTH_LONG).show()
+                    }
+                }
             }, 1500)
         }
     }
@@ -815,7 +879,8 @@ class MainActivity : AppCompatActivity() {
                     anchorText = if (useAnchor) anchorText else "",
                     anchorContentDescription = "",
                     offsetX = if (useAnchor) offsetX else 0,
-                    offsetY = if (useAnchor) offsetY else 0
+                    offsetY = if (useAnchor) offsetY else 0,
+                    scrollDirection = selectedScrollDirection
                 )
 
                 val storage = ShortcutStorage(this)

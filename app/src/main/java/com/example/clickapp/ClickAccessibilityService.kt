@@ -48,6 +48,9 @@ class ClickAccessibilityService : AccessibilityService() {
         var offsetX: Int = 0
         var offsetY: Int = 0
 
+        // Scroll before click
+        var scrollDirection: ScrollDirection = ScrollDirection.NONE
+
         // Live monitoring
         var liveMonitoringEnabled: Boolean = false
 
@@ -66,7 +69,8 @@ class ClickAccessibilityService : AccessibilityService() {
             anchorText: String = "",
             anchorContentDescription: String = "",
             offsetX: Int = 0,
-            offsetY: Int = 0
+            offsetY: Int = 0,
+            scrollDirection: ScrollDirection = ScrollDirection.NONE
         ) {
             this.targetPackage = packageName
             this.useCoordinates = useCoordinates
@@ -80,6 +84,7 @@ class ClickAccessibilityService : AccessibilityService() {
             this.anchorContentDescription = anchorContentDescription
             this.offsetX = offsetX
             this.offsetY = offsetY
+            this.scrollDirection = scrollDirection
             this.pendingAction = true
         }
     }
@@ -151,21 +156,31 @@ class ClickAccessibilityService : AccessibilityService() {
     }
 
     /**
-     * Scrolls to top first, then performs click at coordinates
+     * Performs click at coordinates, optionally scrolling first based on scrollDirection
      */
     private fun performCoordinatesClickWithScroll() {
-        // First scroll to top to ensure consistent positioning
-        scrollToTop()
-
-        // Wait for scroll to complete, then click
-        handler.postDelayed({
-            performClickAtCoordinates(clickX.toFloat(), clickY.toFloat())
-        }, 800)
+        when (scrollDirection) {
+            ScrollDirection.TOP -> {
+                scrollToTop()
+                handler.postDelayed({
+                    performClickAtCoordinates(clickX.toFloat(), clickY.toFloat())
+                }, 800)
+            }
+            ScrollDirection.BOTTOM -> {
+                scrollToBottom()
+                handler.postDelayed({
+                    performClickAtCoordinates(clickX.toFloat(), clickY.toFloat())
+                }, 800)
+            }
+            ScrollDirection.NONE -> {
+                performClickAtCoordinates(clickX.toFloat(), clickY.toFloat())
+            }
+        }
     }
 
     /**
      * Performs a click relative to an anchor element
-     * First scrolls to top, then finds anchor and clicks
+     * Optionally scrolls first based on scrollDirection, then finds anchor and clicks
      */
     private fun performAnchorBasedClick(): Boolean {
         val rootNode = rootInActiveWindow ?: run {
@@ -173,13 +188,23 @@ class ClickAccessibilityService : AccessibilityService() {
             return false
         }
 
-        // First scroll to top to ensure consistent positioning
-        scrollToTop()
-
-        // Wait for scroll to complete, then find anchor and click
-        handler.postDelayed({
-            performAnchorClickAfterScroll()
-        }, 800)
+        when (scrollDirection) {
+            ScrollDirection.TOP -> {
+                scrollToTop()
+                handler.postDelayed({
+                    performAnchorClickAfterScroll()
+                }, 800)
+            }
+            ScrollDirection.BOTTOM -> {
+                scrollToBottom()
+                handler.postDelayed({
+                    performAnchorClickAfterScroll()
+                }, 800)
+            }
+            ScrollDirection.NONE -> {
+                performAnchorClickAfterScroll()
+            }
+        }
 
         return true
     }
@@ -226,8 +251,33 @@ class ClickAccessibilityService : AccessibilityService() {
             Log.d(TAG, "Scrolled to top via accessibility action")
         } else {
             // Fallback: use swipe gesture to scroll up
-            performScrollGesture(isScrollUp = false) // Swipe down to scroll content up/to top
+            repeat(3) {
+                performScrollGesture(isScrollUp = false) // Swipe down to scroll content up/to top
+            }
             Log.d(TAG, "Scrolled to top via gesture")
+        }
+    }
+
+    /**
+     * Scrolls the current view to the bottom
+     */
+    fun scrollToBottom() {
+        val rootNode = rootInActiveWindow ?: return
+
+        // Find scrollable node
+        val scrollableNode = findScrollableNode(rootNode)
+        if (scrollableNode != null) {
+            // Perform multiple scroll-to-bottom actions to ensure we're at the very bottom
+            repeat(5) {
+                scrollableNode.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
+            }
+            Log.d(TAG, "Scrolled to bottom via accessibility action")
+        } else {
+            // Fallback: use swipe gesture to scroll down
+            repeat(3) {
+                performScrollGesture(isScrollUp = true) // Swipe up to scroll content down/to bottom
+            }
+            Log.d(TAG, "Scrolled to bottom via gesture")
         }
     }
 
