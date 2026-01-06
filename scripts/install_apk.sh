@@ -28,6 +28,11 @@ check_adb_connection() {
     fi
 }
 
+# Function to check if app is installed
+is_app_installed() {
+    adb shell pm list packages 2>/dev/null | grep -q "$PACKAGE_NAME"
+}
+
 # Function to pair and connect to device
 pair_device() {
     echo ""
@@ -109,9 +114,17 @@ if [ ! -f "app-debug.apk" ]; then
     exit 1
 fi
 
-echo -e "Installing version $VERSION..."
+echo "Check if app is installed before uninstalling"
+if is_app_installed; then
+    echo -e "\tApp is installed. Uninstalling old version..."
+    adb uninstall "$PACKAGE_NAME" > /dev/null 2>&1 || true
+else
+    echo -e "\tNo existing installation found."
+fi
+
+echo -e "Installing new version..."
 mv app-debug.apk clickapp.apk
-adb install -r -d -g clickapp.apk > /dev/null 2>&1
+adb install clickapp.apk > /dev/null 2>&1
 
 echo -e "Cleaning up..."
 rm -rf *.apk
